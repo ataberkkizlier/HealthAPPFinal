@@ -1,20 +1,115 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Image } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { COLORS, SIZES, icons, images } from '../constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-virtualized-view';
 import { useTheme } from '../theme/ThemeProvider';
-import { banners, categories, recommendedDoctors } from '../data';
+import { categories, recommendedDoctors } from '../data';
 import SubHeaderItem from '../components/SubHeaderItem';
-import Category from '../components/Category';
 import HorizontalDoctorCard from '../components/HorizontalDoctorCard';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const MetricCard = React.memo(({
+  icon,
+  label,
+  metric,
+  unit,
+  color,
+  dark,
+  value,
+  onUpdate
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [localValue, setLocalValue] = useState(String(value));
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onUpdate(metric, localValue);
+  };
+
+  const handleChange = (text) => {
+    setLocalValue(text);
+  };
+
+  return (
+    <View style={[styles.metricCard, {
+      backgroundColor: dark ? COLORS.dark2 : COLORS.white,
+      shadowColor: dark ? COLORS.white : COLORS.gray
+    }]}>
+      <View style={styles.metricHeader}>
+        <Image
+          source={icon}
+          style={[styles.metricIcon, { tintColor: color }]}
+        />
+        <Text style={[styles.metricLabel, { color: dark ? COLORS.white : COLORS.greyscale900 }]}>
+          {label}
+        </Text>
+      </View>
+      <View style={styles.metricValueContainer}>
+        <TextInput
+          style={[
+            styles.metricInput,
+            isFocused && styles.metricInputFocused,
+            { color: color }
+          ]}
+          value={localValue}
+          onChangeText={handleChange}
+          keyboardType={metric === 'bloodPressure' ? 'default' : 'number-pad'}
+          onFocus={() => setIsFocused(true)}
+          onBlur={handleBlur}
+          placeholder="0"
+          placeholderTextColor={COLORS.gray}
+          selectionColor={color}
+          contextMenuHidden={true}
+        />
+        {unit && <Text style={[styles.metricUnit, { color: dark ? COLORS.gray : COLORS.greyscale700 }]}>{unit}</Text>}
+      </View>
+      {unit === '%' && (
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, {
+            width: `${value}%`,
+            backgroundColor: color
+          }]} />
+        </View>
+      )}
+    </View>
+  );
+});
 
 const Home = ({ navigation }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const { dark, colors } = useTheme();
-  /**
-  * Render header
-  */
+  const [healthMetrics, setHealthMetrics] = useState({
+    nutrition: 90,
+    workout: 75,
+    water: 90,
+    mental: 80,
+    sleep: 70,
+    steps: 6500,
+    bloodPressure: '120/80'
+  });
+
+  const overallScore = Math.round(
+    (healthMetrics.nutrition + healthMetrics.workout + healthMetrics.water +
+      healthMetrics.mental + healthMetrics.sleep) / 5
+  );
+
+  const updateMetric = useCallback((metric, value) => {
+    let processedValue = value;
+
+    if (metric === 'bloodPressure') {
+      processedValue = value.replace(/[^0-9/]/g, '');
+    } else if (metric !== 'steps') {
+      processedValue = Math.min(100, Math.max(0, parseInt(value) || 0));
+    } else {
+      processedValue = Math.min(50000, Math.max(0, parseInt(value) || 0));
+    }
+
+    setHealthMetrics(prev => ({
+      ...prev,
+      [metric]: processedValue
+    }));
+  }, []);
+
   const renderHeader = () => {
     return (
       <View style={styles.headerContainer}>
@@ -32,16 +127,14 @@ const Home = ({ navigation }) => {
           </View>
         </View>
         <View style={styles.viewRight}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Notifications")}>
+          <TouchableOpacity onPress={() => navigation.navigate("Notifications")}>
             <Image
               source={icons.notificationBell2}
               resizeMode='contain'
               style={[styles.bellIcon, { tintColor: dark ? COLORS.white : COLORS.greyscale900 }]}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Favourite")}>
+          <TouchableOpacity onPress={() => navigation.navigate("Favourite")}>
             <Image
               source={icons.heartOutline}
               resizeMode='contain'
@@ -51,210 +144,153 @@ const Home = ({ navigation }) => {
         </View>
       </View>
     )
-  }
-  /**
-  * Render search bar
-  */
+  };
+
   const renderSearchBar = () => {
-
-    const handleInputFocus = () => {
-      // Redirect to another screen
-      navigation.navigate('Search');
-    };
-
     return (
       <TouchableOpacity
         onPress={() => navigation.navigate("Search")}
         style={[styles.searchBarContainer, {
           backgroundColor: dark ? COLORS.dark2 : COLORS.secondaryWhite
         }]}>
-        <TouchableOpacity>
-          <Image
-            source={icons.search2}
-            resizeMode='contain'
-            style={styles.searchIcon}
-          />
-        </TouchableOpacity>
+        <Image
+          source={icons.search2}
+          resizeMode='contain'
+          style={styles.searchIcon}
+        />
         <TextInput
           placeholder='Search'
           placeholderTextColor={COLORS.gray}
           style={styles.searchInput}
-          onFocus={handleInputFocus}
+          onFocus={() => navigation.navigate('Search')}
         />
-        <TouchableOpacity>
-          <Image
-            source={icons.filter}
-            resizeMode='contain'
-            style={styles.filterIcon}
-          />
-        </TouchableOpacity>
+        <Image
+          source={icons.filter}
+          resizeMode='contain'
+          style={styles.filterIcon}
+        />
       </TouchableOpacity>
     )
-  }
+  };
 
-  const renderBannerItem = ({ item }) => (
-    <View style={styles.bannerContainer}>
-      <View style={styles.bannerTopContainer}>
-        <View>
-          <Text style={styles.bannerDicount}>{item.discount} OFF</Text>
-          <Text style={styles.bannerDiscountName}>{item.discountName}</Text>
-        </View>
-        <Text style={styles.bannerDiscountNum}>{item.discount}</Text>
-      </View>
-      <View style={styles.bannerBottomContainer}>
-        <Text style={styles.bannerBottomTitle}>{item.bottomTitle}</Text>
-        <Text style={styles.bannerBottomSubtitle}>{item.bottomSubtitle}</Text>
+  const renderHealthMetrics = () => (
+    <View style={styles.healthContainer}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryLight]}
+        style={styles.scoreCircle}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.scoreText}>{overallScore}</Text>
+        <Text style={styles.scoreLabel}>Overall Score</Text>
+      </LinearGradient>
+
+      <View style={styles.metricsGrid}>
+        <MetricCard
+          icon={icons.nutrition}
+          label="Nutrition"
+          metric="nutrition"
+          unit="%"
+          color="#FF9F1C"
+          dark={dark}
+          value={healthMetrics.nutrition}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.workout}
+          label="Workout"
+          metric="workout"
+          unit="%"
+          color="#2EC4B6"
+          dark={dark}
+          value={healthMetrics.workout}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.water}
+          label="Water Intake"
+          metric="water"
+          unit="%"
+          color="#3A86FF"
+          dark={dark}
+          value={healthMetrics.water}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.mentalHealth}
+          label="Mental Health"
+          metric="mental"
+          unit="%"
+          color="#8338EC"
+          dark={dark}
+          value={healthMetrics.mental}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.sleep}
+          label="Sleep Quality"
+          metric="sleep"
+          unit="%"
+          color="#FF006E"
+          dark={dark}
+          value={healthMetrics.sleep}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.steps}
+          label="Daily Steps"
+          metric="steps"
+          color="#8AC926"
+          dark={dark}
+          value={healthMetrics.steps}
+          onUpdate={updateMetric}
+        />
+        <MetricCard
+          icon={icons.bloodPressure}
+          label="Blood Pressure"
+          metric="bloodPressure"
+          color="#FF595E"
+          dark={dark}
+          value={healthMetrics.bloodPressure}
+          onUpdate={updateMetric}
+        />
       </View>
     </View>
   );
 
-  const keyExtractor = (item) => item.id.toString();
 
-  const handleEndReached = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
-  };
-
-  const renderDot = (index) => {
-    return (
-      <View
-        style={[styles.dot, index === currentIndex ? styles.activeDot : null]}
-        key={index}
+  const renderCategories = () => (
+    <View>
+      <SubHeaderItem
+        title="Categories"
+        navTitle="See all"
+        onPress={() => navigation.navigate("Categories")}
       />
-    );
-  };
+      <FlatList
+        data={categories.slice(1, 9)}
+        keyExtractor={(_, index) => index.toString()}
+        numColumns={4}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.categoryItem}
+            onPress={() => navigation.navigate(item.screen)}>
+            <Image source={item.icon} style={styles.categoryIcon} />
+            <Text style={styles.categoryText}>{item.name}</Text>
+          </TouchableOpacity>
+        )}
+      />
+    </View>
+  );
 
-  /**
-  * Render banner
-  */
-  const renderBanner = () => {
-    return (
-      <View style={styles.bannerItemContainer}>
-        <FlatList
-          data={banners}
-          renderItem={renderBannerItem}
-          keyExtractor={keyExtractor}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
-          onMomentumScrollEnd={(event) => {
-            const newIndex = Math.round(
-              event.nativeEvent.contentOffset.x / SIZES.width
-            );
-            setCurrentIndex(newIndex);
-          }}
-        />
-        <View style={styles.dotContainer}>
-          {banners.map((_, index) => renderDot(index))}
-        </View>
-      </View>
-    )
-  }
-
-  /**
-  * Render categories
-  */
-  const renderCategories = () => {
-    return (
-      <View>
-        <SubHeaderItem
-          title="Categories"
-          navTitle="See all"
-          onPress={() => navigation.navigate("Categories")}
-        />
-        <FlatList
-          data={categories.slice(1, 9)}
-          keyExtractor={(item, index) => index.toString()}
-          numColumns={4}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: SIZES.width / 4 - 16, // Adjust for 4 columns
-                marginVertical: 8,
-              }}
-              onPress={() => {
-                console.log('Navigating to:', item.screen);
-                if (navigation && item.screen) {
-                  navigation.navigate(item.screen);
-                }
-              }}
-            >
-              <Image
-                source={item.icon}
-                style={{
-                  width: 40, // Consistent size for all icons
-                  height: 40,
-                  resizeMode: 'contain',
-                }}
-              />
-              <Text
-                style={{
-                  marginTop: 4,
-                  textAlign: 'center',
-                  fontSize: 12, // Small font size for compact look
-                  fontFamily: 'regular',
-                }}
-              >
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-    );
-  };
-
-  /**
-   * render top doctor
-   */
   const renderTopDoctors = () => {
     const [selectedCategories, setSelectedCategories] = useState(["1"]);
 
-    const filteredDoctors = recommendedDoctors.filter(doctor => selectedCategories.includes("0") || selectedCategories.includes(doctor.categoryId));
-
-    // Category item
-    const renderCategoryItem = ({ item }) => (
-      <TouchableOpacity
-        style={{
-          backgroundColor: selectedCategories.includes(item.id)
-            ? COLORS.primary
-            : COLORS.secondaryWhite, // Add a highlighted background for selected
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          marginVertical: 5,
-          borderColor: COLORS.primary,
-          borderWidth: 1.3,
-          borderRadius: 24,
-          marginRight: 12,
-        }}
-        onPress={() => toggleCategory(item.id)}
-      >
-        <Text style={{
-          color: selectedCategories.includes(item.id)
-            ? COLORS.white
-            : COLORS.primary, // Text color changes only
-          fontFamily: 'medium',
-        }}>
-          {item.name}
-        </Text>
-      </TouchableOpacity>
-    );
-
-    // Toggle category selection
     const toggleCategory = (categoryId) => {
-      const updatedCategories = [...selectedCategories];
-      const index = updatedCategories.indexOf(categoryId);
-
-      if (index === -1) {
-        updatedCategories.push(categoryId);
-      } else {
-        updatedCategories.splice(index, 1);
-      }
-
-      setSelectedCategories(updatedCategories);
+      setSelectedCategories(prev =>
+        prev.includes(categoryId)
+          ? prev.filter(id => id !== categoryId)
+          : [...prev, categoryId]
+      );
     };
 
     return (
@@ -266,54 +302,57 @@ const Home = ({ navigation }) => {
         />
         <FlatList
           data={categories}
-          keyExtractor={item => item.id}
-          showsHorizontalScrollIndicator={false}
           horizontal
-          renderItem={renderCategoryItem}
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.categoryFilter,
+                selectedCategories.includes(item.id) && styles.selectedCategoryFilter
+              ]}
+              onPress={() => toggleCategory(item.id)}>
+              <Text style={[
+                styles.categoryFilterText,
+                selectedCategories.includes(item.id) && styles.selectedCategoryFilterText
+              ]}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          )}
         />
-        <View style={{
-          backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite,
-          marginVertical: 16
-        }}>
-          <FlatList
-            data={filteredDoctors}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => {
-              return (
-                <HorizontalDoctorCard
-                  name={item.name}
-                  image={item.image}
-                  distance={item.distance}
-                  price={item.price}
-                  consultationFee={item.consultationFee}
-                  hospital={item.hospital}
-                  rating={item.rating}
-                  numReviews={item.numReviews}
-                  isAvailable={item.isAvailable}
-                  onPress={() => navigation.navigate("DoctorDetails")}
-                />
-              )
-            }}
-          />
-        </View>
+        <FlatList
+          data={recommendedDoctors}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <HorizontalDoctorCard
+              {...item}
+              onPress={() => navigation.navigate("DoctorDetails")}
+            />
+          )}
+          contentContainerStyle={[styles.doctorsList, {
+            backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite
+          }]}
+        />
       </View>
     )
-  }
+  };
+
   return (
     <SafeAreaView style={[styles.area, { backgroundColor: colors.background }]}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {renderHeader()}
         <ScrollView showsVerticalScrollIndicator={false}>
           {renderSearchBar()}
-          {renderBanner()}
+          {renderHealthMetrics()}
           {renderCategories()}
           {renderTopDoctors()}
         </ScrollView>
       </View>
     </SafeAreaView>
-  )
+  );
 };
-
+//
 const styles = StyleSheet.create({
   area: {
     flex: 1,
@@ -321,12 +360,10 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
     padding: 16
   },
   headerContainer: {
     flexDirection: "row",
-    width: SIZES.width - 32,
     justifyContent: "space-between",
     alignItems: "center"
   },
@@ -342,7 +379,7 @@ const styles = StyleSheet.create({
   greeeting: {
     fontSize: 12,
     fontFamily: "regular",
-    color: "gray",
+    color: COLORS.gray,
     marginBottom: 4
   },
   title: {
@@ -360,23 +397,23 @@ const styles = StyleSheet.create({
   bellIcon: {
     height: 24,
     width: 24,
-    tintColor: COLORS.black,
-    marginRight: 8
+    marginRight: 8,
+    tintColor: COLORS.greyscale900
   },
   bookmarkIcon: {
     height: 24,
     width: 24,
-    tintColor: COLORS.black
+    tintColor: COLORS.greyscale900
   },
   searchBarContainer: {
-    width: SIZES.width - 32,
-    backgroundColor: COLORS.secondaryWhite,
+    width: '100%',
     padding: 16,
     borderRadius: 12,
     height: 52,
     marginVertical: 16,
     flexDirection: "row",
-    alignItems: "center"
+    alignItems: "center",
+    backgroundColor: COLORS.secondaryWhite,
   },
   searchIcon: {
     height: 24,
@@ -387,91 +424,162 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontFamily: "regular",
-    marginHorizontal: 8
+    marginHorizontal: 8,
+    color: COLORS.greyscale900
   },
   filterIcon: {
     width: 24,
     height: 24,
     tintColor: COLORS.primary
   },
-  bannerContainer: {
-    width: SIZES.width - 32,
-    height: 154,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary
+  healthContainer: {
+    marginBottom: 24,
   },
-  bannerTopContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  bannerDicount: {
-    fontSize: 12,
-    fontFamily: "medium",
-    color: COLORS.white,
-    marginBottom: 4
-  },
-  bannerDiscountName: {
-    fontSize: 16,
-    fontFamily: "bold",
-    color: COLORS.white
-  },
-  bannerDiscountNum: {
-    fontSize: 46,
-    fontFamily: "bold",
-    color: COLORS.white
-  },
-  bannerBottomContainer: {
-    marginTop: 8
-  },
-  bannerBottomTitle: {
-    fontSize: 14,
-    fontFamily: "medium",
-    color: COLORS.white
-  },
-  bannerBottomSubtitle: {
-    fontSize: 14,
-    fontFamily: "medium",
-    color: COLORS.white,
-    marginTop: 4
-  },
-  userAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 999
-  },
-  firstName: {
-    fontSize: 16,
-    fontFamily: "semiBold",
-    color: COLORS.dark2,
-    marginTop: 6
-  },
-  bannerItemContainer: {
-    width: "100%",
-    paddingBottom: 10,
-    backgroundColor: COLORS.primary,
-    height: 170,
-    borderRadius: 32,
-  },
-  dotContainer: {
-    flexDirection: 'row',
+  // Updated Score Circle
+  scoreCircle: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    alignSelf: 'center',
+    marginBottom: 32,
+    backgroundColor: COLORS.primary,
+    borderWidth: 4,
+    borderColor: '#E8F0FE',
+    elevation: 12,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ccc',
-    marginHorizontal: 5,
+  scoreText: {
+    fontSize: 48,
+    fontFamily: 'bold',
+    color: COLORS.white,
+    letterSpacing: -1,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
-  activeDot: {
+  scoreLabel: {
+    fontSize: 16,
+    fontFamily: 'medium',
+    color: COLORS.white,
+    opacity: 0.95,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  // Updated Metrics Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  metricCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     backgroundColor: COLORS.white,
+    elevation: 3,
+    shadowColor: COLORS.gray,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.grayscale100,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metricIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
+  metricLabel: {
+    fontSize: 14,
+    fontFamily: 'medium',
+    color: COLORS.greyscale900
+  },
+  // Improved Value Alignment
+  metricValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  metricValue: {
+    fontSize: 24,
+    fontFamily: 'bold',
+    color: COLORS.greyscale900,
+    marginRight: 4,
+  },
+  metricUnit: {
+    fontSize: 16,
+    fontFamily: 'regular',
+    color: COLORS.gray,
+    marginLeft: 2,
+  },
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.grayscale100,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  // Rest of the styles remain the same
+  categoryItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: SIZES.width / 4 - 16,
+    marginVertical: 8,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  categoryText: {
+    marginTop: 4,
+    textAlign: 'center',
+    fontSize: 12,
+    fontFamily: 'regular',
+    color: COLORS.greyscale900
+  },
+  categoryFilter: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginVertical: 5,
+    borderColor: COLORS.primary,
+    borderWidth: 1.3,
+    borderRadius: 24,
+    marginRight: 12,
+    backgroundColor: COLORS.secondaryWhite,
+  },
+  selectedCategoryFilter: {
+    backgroundColor: COLORS.primary,
+  },
+  categoryFilterText: {
+    fontFamily: 'medium',
+    color: COLORS.primary,
+  },
+  selectedCategoryFilterText: {
+    color: COLORS.white,
+  },
+  doctorsList: {
+    marginVertical: 16,
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: COLORS.secondaryWhite
   }
+});
 
-})
-
-export default Home
+export default Home;
