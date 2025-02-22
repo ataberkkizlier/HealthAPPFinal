@@ -175,7 +175,12 @@ const Home = ({ navigation }) => {
                 width: SIZES.width / 4 - 16, // Adjust for 4 columns
                 marginVertical: 8,
               }}
-              onPress={item.onPress}
+              onPress={() => {
+                console.log('Navigating to:', item.screen);
+                if (navigation && item.screen) {
+                  navigation.navigate(item.screen);
+                }
+              }}
             >
               <Image
                 source={item.icon}
@@ -196,7 +201,6 @@ const Home = ({ navigation }) => {
                 {item.name}
               </Text>
             </TouchableOpacity>
-
           )}
         />
       </View>

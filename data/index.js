@@ -175,7 +175,7 @@ export const categories = [
         iconColor: "rgba(36, 107, 253, 1)", // Blue color
         backgroundColor: "rgba(36, 107, 253, .12)",
         resizeMode: "contain",
-        onPress: "CategoryNutrition",
+        screen: "CategoryNutrition",
     }
     ,
     {
@@ -184,14 +184,14 @@ export const categories = [
         icon: icons.workoutSon,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategoryWorkout"
+        screen: "CategoryWorkout"
     },
     {
         id: "3",
         name: "Water Intake",
         icon: icons.waterSon,
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategoryWaterIntake"
+        screen: "CategoryWaterIntake"
     },
     {
         id: "4",
@@ -199,7 +199,7 @@ export const categories = [
         icon: icons.mentalWellSon,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategoryMentalHealth"
+        screen: "CategoryMentalHealth"
     },
     {
         id: "5",
@@ -207,7 +207,7 @@ export const categories = [
         icon: icons.sleep,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategorySleep"
+        screen: "CategorySleep"
     },
     {
         id: "6",
@@ -215,7 +215,7 @@ export const categories = [
         icon: icons.steps,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategorySteps"
+        screen: "CategorySteps"
     },
     {
         id: "7",
@@ -223,7 +223,7 @@ export const categories = [
         icon: icons.bloodPressure,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: "CategoryBloodPressure"
+        screen: "CategoryBloodPressure"
     },
     {
         id: "8",
@@ -231,7 +231,7 @@ export const categories = [
         icon: icons.more3,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        onPress: null
+        screen: null
     }
 ];
 

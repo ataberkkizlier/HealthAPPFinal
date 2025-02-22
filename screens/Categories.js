@@ -1,74 +1,55 @@
-import { View, StyleSheet, FlatList, Text, Image } from 'react-native';
+import { View, StyleSheet, FlatList, Text, Image, TouchableOpacity } from 'react-native';
 import React from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../components/Header';
-import { categories } from '../data';
-import { useTheme } from '../theme/ThemeProvider';
+import { categories } from '../data'; // ✅ Use the imported categories
 
 const Categories = () => {
-  const { colors } = useTheme();
+  const navigation = useNavigation();
 
-  const renderCategoryItem = ({ item }) => {
-    return (
-      <View style={styles.categoryContainer}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: item.backgroundColor || 'rgba(36, 107, 253, 0.12)' }, // Light blue background
-          ]}
-        >
-          <Image
-            source={item.icon} // Render icons
-            style={{
-              width: 32,
-              height: 32,
-              tintColor: item.iconColor || 'rgba(36, 107, 253, 1)', // Blue icon tint
-            }}
-            resizeMode="contain"
-          />
-        </View>
-        <Text style={[styles.categoryName, { color: colors.text }]}>
-          {item.name}
-        </Text>
+  const renderCategoryItem = ({ item }) => (
+    <TouchableOpacity
+      onPress={() => {
+        console.log('Navigating to:', item.screen);
+        if (navigation && item.screen) {
+          navigation.navigate(item.screen);
+        }
+      }}
+      style={styles.categoryContainer}
+    >
+      <View style={styles.iconContainer}>
+        <Image source={item.icon} style={{ width: 32, height: 32 }} resizeMode="contain" />
       </View>
-    );
-  };
+      <Text style={styles.categoryText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={[styles.area, { backgroundColor: colors.background }]}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Header title="More Categories" />
-        <FlatList
-          data={categories.slice(1)} // Skip the first category if necessary
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={4} // Display 4 items per row
-          renderItem={renderCategoryItem}
-          contentContainerStyle={styles.flatListContent}
-        />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <Header title="More Categories" />
+      <FlatList
+        data={categories} // ✅ Use the imported categories
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={2}
+        renderItem={renderCategoryItem}
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  area: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
-    padding: 16,
-  },
-  flatListContent: {
-    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   categoryContainer: {
-    flex: 1,
     alignItems: 'center',
     marginVertical: 12,
-    width: '22%', // Adjust for 4 items in a row
+    width: '45%',
   },
   iconContainer: {
     width: 60,
@@ -78,8 +59,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  categoryName: {
-    fontSize: 12,
+  categoryText: {
+    fontSize: 14,
     textAlign: 'center',
     color: COLORS.darkGray,
   },
