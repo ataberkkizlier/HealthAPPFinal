@@ -1,7 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useState, useEffect } from 'react';
 import {
   AddNewAddress, AddNewCard, Address, ArticlesDetails, ArticlesSeeAll, BookAppointment,
   CancelAppointment, CancelAppointmentPaymentMethods, Categories, ChangeEmail, ChangePIN,
@@ -10,17 +8,17 @@ import {
   Fingerprint, ForgotPasswordEmail, ForgotPasswordMethods, ForgotPasswordPhoneNumber,
   HelpCenter, InviteFriends, LeaveReview, Login, Messaging, MyAppointmentMessaging,
   MyAppointmentVideoCall, MyAppointmentVoiceCall, MyBookmarkedArticles, Notifications,
-  OTPVerification, Onboarding1, Onboarding2, Onboarding3, Onboarding4, PatientDetails,
-  PaymentMethods, RescheduleAppointment, ReviewSummary, Search, SelectPackage,
-  SelectRescheduleAppointmentDate, SessionEnded, SettingsLanguage, SettingsNotifications,
-  SettingsPayment, SettingsPrivacyPolicy, SettingsSecurity, Signup, TopDoctors,
-  TrendingArticles, VideoCall, VideoCallHistoryDetails, VideoCallHistoryDetailsPlayRecordings,
+  OTPVerification, PatientDetails, PaymentMethods, RescheduleAppointment, ReviewSummary,
+  Search, SelectPackage, SelectRescheduleAppointmentDate, SessionEnded, SettingsLanguage,
+  SettingsNotifications, SettingsPayment, SettingsPrivacyPolicy, SettingsSecurity, Signup,
+  TopDoctors, TrendingArticles, VideoCall, VideoCallHistoryDetails, VideoCallHistoryDetailsPlayRecordings,
   VoiceCall, VoiceCallHistoryDetails, VoiceCallHistoryDetailsPlayRecordings, Welcome
 } from '../screens';
 
 import BottomTabNavigation from './BottomTabNavigation';
+import OnboardingCarousel from '../screens/OnboardingCarousel';
 
-// ✅ Import All Category Screens
+// Category Screens
 import Workout from '../screens/Workout';
 import Nutrition from '../screens/Nutrition';
 import WaterIntake from '../screens/WaterIntake';
@@ -33,39 +31,24 @@ import Others from '../screens/Others';
 const Stack = createNativeStackNavigator();
 
 const AppNavigation = () => {
-  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkIfFirstLaunch = async () => {
-      try {
-        const value = await AsyncStorage.getItem('alreadyLaunched');
-        if (value === null) {
-          await AsyncStorage.setItem('alreadyLaunched', 'true');
-          setIsFirstLaunch(true);
-        } else {
-          setIsFirstLaunch(false);
-        }
-      } catch (error) {
-        setIsFirstLaunch(false);
-      }
-      setIsLoading(false); // Set loading state to false once the check is complete
-    };
-
-    checkIfFirstLaunch();
-  }, []);
-
-  if (isLoading) {
-    return null; // Render a loader or any other loading state component
-  }
-
   return (
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName={isFirstLaunch ? 'Onboarding1' : 'Onboarding1'}
+        initialRouteName="Onboarding"
       >
-        {/* ✅ Add Missing Category Screens */}
+        {/* Onboarding Flow */}
+        <Stack.Screen name="Onboarding" component={OnboardingCarousel} />
+
+        {/* Auth Flow */}
+        <Stack.Screen name="Welcome" component={Welcome} />
+        <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="Signup" component={Signup} />
+
+        {/* Main App */}
+        <Stack.Screen name="Main" component={BottomTabNavigation} />
+
+        {/* Category Screens */}
         <Stack.Screen name="CategoryWorkout" component={Workout} />
         <Stack.Screen name="CategoryNutrition" component={Nutrition} />
         <Stack.Screen name="CategoryWaterIntake" component={WaterIntake} />
@@ -75,14 +58,7 @@ const AppNavigation = () => {
         <Stack.Screen name="CategoryBloodPressure" component={BloodPressure} />
         <Stack.Screen name="CategoryOthers" component={Others} />
 
-        {/* ✅ Keep Existing Screens */}
-        <Stack.Screen name="Onboarding1" component={Onboarding1} />
-        <Stack.Screen name="Onboarding2" component={Onboarding2} />
-        <Stack.Screen name="Onboarding3" component={Onboarding3} />
-        <Stack.Screen name="Onboarding4" component={Onboarding4} />
-        <Stack.Screen name="Welcome" component={Welcome} />
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="Signup" component={Signup} />
+        {/* Existing Screens */}
         <Stack.Screen name="ForgotPasswordMethods" component={ForgotPasswordMethods} />
         <Stack.Screen name="ForgotPasswordEmail" component={ForgotPasswordEmail} />
         <Stack.Screen name="ForgotPasswordPhoneNumber" component={ForgotPasswordPhoneNumber} />
@@ -91,7 +67,6 @@ const AppNavigation = () => {
         <Stack.Screen name="FillYourProfile" component={FillYourProfile} />
         <Stack.Screen name="CreateNewPIN" component={CreateNewPIN} />
         <Stack.Screen name="Fingerprint" component={Fingerprint} />
-        <Stack.Screen name="Main" component={BottomTabNavigation} />
         <Stack.Screen name="EditProfile" component={EditProfile} />
         <Stack.Screen name="SettingsNotifications" component={SettingsNotifications} />
         <Stack.Screen name="SettingsPayment" component={SettingsPayment} />

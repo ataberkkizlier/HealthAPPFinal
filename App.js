@@ -1,28 +1,31 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FONTS } from './constants/fonts';
 import AppNavigation from './navigations/AppNavigation';
 import { LogBox } from 'react-native';
 import { ThemeProvider } from './theme/ThemeProvider';
 
-//Ignore all log notifications
 LogBox.ignoreAllLogs();
-
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [fontsLoaded] = useFonts(FONTS)
+  const [fontsLoaded] = useFonts(FONTS);
+  const [appReady, setAppReady] = useState(false);
 
   const onLayoutRootView = useCallback(async () => {
-      if (fontsLoaded) {
-          await SplashScreen.hideAsync()
-      }
-  }, [fontsLoaded])
+    if (fontsLoaded && appReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, appReady]);
 
-  if (!fontsLoaded) {
-      return null
+  useEffect(() => {
+    setAppReady(true);
+  }, []);
+
+  if (!fontsLoaded || !appReady) {
+    return null;
   }
 
   return (

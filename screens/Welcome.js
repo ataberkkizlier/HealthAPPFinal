@@ -17,31 +17,40 @@ const Welcome = ({ navigation }) => {
           Hello there, keep your health metrics on track!
         </Text>
         <View style={{ marginVertical: 32 }}>
-          <SocialButtonV2 title="Continue with Apple" icon={icons.appleLogo} onPress={() => navigation.navigate("Signup")}
-            iconStyles={{ tintColor: dark ? COLORS.white : COLORS.black }} />
-          <SocialButtonV2 title="Continue with Google" icon={icons.google} onPress={() => navigation.navigate("Signup")} />
-          <SocialButtonV2 title="Continue with Email" icon={icons.email2} onPress={() => navigation.navigate("Signup")} />
+          <SocialButtonV2
+            title="Continue with Apple"
+            icon={icons.appleLogo}
+            onPress={() => navigation.navigate("Signup")}
+            iconStyles={{ tintColor: dark ? COLORS.white : COLORS.black }}
+          />
+          <SocialButtonV2
+            title="Continue with Google"
+            icon={icons.google}
+            onPress={() => navigation.navigate("Signup")}
+          />
+          <SocialButtonV2
+            title="Continue with Email"
+            icon={icons.email2}
+            onPress={() => navigation.navigate("Signup")}
+          />
         </View>
         <View style={{ flexDirection: "row" }}>
-          <Text style={[styles.loginTitle, {
-            color: dark ? COLORS.white : "black"
-          }]}>Already have account? </Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Login")}>
+          <Text style={[styles.loginTitle, { color: dark ? COLORS.white : "black" }]}>
+            Already have account?
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
             <Text style={styles.loginSubtitle}>Log In</Text>
           </TouchableOpacity>
         </View>
       </View>
       <View style={styles.bottomContainer}>
-        <Text style={[styles.bottomTitle, {
-          color: dark ? COLORS.white : COLORS.black
-        }]}>
+        <Text style={[styles.bottomTitle, { color: dark ? COLORS.white : COLORS.black }]}>
           By continuing, you accept the terms of use and
         </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-          <Text style={[styles.bottomSubtitle, {
-            color: dark ? COLORS.white : COLORS.black
-          }]}>Privacy Policy.</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("PrivacyPolicy")}>
+          <Text style={[styles.bottomSubtitle, { color: dark ? COLORS.white : COLORS.black }]}>
+            Privacy Policy.
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -65,7 +74,6 @@ const styles = StyleSheet.create({
     height: 72,
     marginBottom: 22,
     marginTop: -22,
-    //tintColor: COLORS.primary
   },
   title: {
     fontSize: 28,
