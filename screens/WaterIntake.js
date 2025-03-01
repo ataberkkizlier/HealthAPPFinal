@@ -1,58 +1,92 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 
-const Nutrition = () => {
-    const navigation = useNavigation();
+export default function WaterIntake({ navigation }) {
+  const [intake, setIntake] = useState('');
+  const [totalIntake, setTotalIntake] = useState(0);
 
-    return (
-        <View style={styles.container}>
-            { /* Back Button */}
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.navigate('Main')} // Go back to Home
-            >
-                <Image source={require('../assets/icons/back.png')} style={styles.backIcon} />
-                <Text style={styles.backText}>Home</Text>
-            </TouchableOpacity>
+  const handleAddIntake = () => {
+    const intakeValue = parseInt(intake);
+    if (!isNaN(intakeValue)) {
+      setTotalIntake(totalIntake + intakeValue);
+      setIntake('');
+    }
+  };
 
-            {/* Screen Title */}
-            <Text style={styles.text}>Water Intake Screen</Text>
-        </View>
-    );
-};
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Daily Water Intake Tracker</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter amount of water (ml)"
+        keyboardType="numeric"
+        value={intake}
+        onChangeText={setIntake}
+      />
+      <TouchableOpacity style={styles.addButton} onPress={handleAddIntake}>
+        <Text style={styles.addButtonText}>Add</Text>
+      </TouchableOpacity>
+      <Text style={styles.result}>
+        Total Water Intake: {totalIntake} ml
+      </Text>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+        <Text style={styles.backButtonText}>Back to Home</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        paddingTop: 50,
-    },
-    backButton: {
-        position: 'absolute',
-        top: 40,
-        left: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 10,
-    },
-    backIcon: {
-        width: 20,
-        height: 20,
-        resizeMode: 'contain',
-    },
-    backText: {
-        marginLeft: 5,
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#007bff',
-    },
-    text: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginTop: 50,
-    },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f0f8ff', // Light background color
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
+  },
+  input: {
+    height: 50,
+    width: '100%',
+    borderColor: '#007bff',
+    borderWidth: 2,
+    borderRadius: 10,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    fontSize: 18,
+  },
+  addButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  result: {
+    marginTop: 20,
+    fontSize: 22,
+    color: '#333',
+  },
+  backButton: {
+    marginTop: 30,
+    backgroundColor: '#ccc',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  backButtonText: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });
-
-export default Nutrition;
