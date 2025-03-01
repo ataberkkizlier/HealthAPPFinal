@@ -15,7 +15,10 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +30,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }
