@@ -34,7 +34,10 @@ const AppNavigation = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          detachPreviousScreen: false // Critical fix for navigation params
+        }}
         initialRouteName="Onboarding"
       >
         {/* Onboarding Flow */}
@@ -44,6 +47,9 @@ const AppNavigation = () => {
         <Stack.Screen name="Welcome" component={Welcome} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Signup" component={Signup} />
+
+        {/* MAIN FIX: DoctorDetails MUST be registered before BottomTabNavigation */}
+        <Stack.Screen name="DoctorDetails" component={DoctorDetails} />
 
         {/* Main App */}
         <Stack.Screen name="Main" component={BottomTabNavigation} />
@@ -90,7 +96,6 @@ const AppNavigation = () => {
         <Stack.Screen name="TopDoctors" component={TopDoctors} />
         <Stack.Screen name="Categories" component={Categories} />
         <Stack.Screen name="Favourite" component={Favourite} />
-        <Stack.Screen name="DoctorDetails" component={DoctorDetails} />
         <Stack.Screen name="DoctorReviews" component={DoctorReviews} />
         <Stack.Screen name="BookAppointment" component={BookAppointment} />
         <Stack.Screen name="SelectPackage" component={SelectPackage} />

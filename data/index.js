@@ -247,7 +247,12 @@ export const recommendedDoctors = [
         numReviews: "1.2k",
         hospital: "St. Mary's Hospital",
         isAvailable: true,
-        categoryId: "1"
+        categoryId: "1",
+        speciality: "Nutritionist",
+        patients: 1200,
+        yearsExperience: 8,
+        workingTime: "Mon-Fri: 8am-8pm",
+        description: "Dr. Tracy Jackson is a certified nutritionist with 8 years of experience.",
     },
     {
         id: "2",
@@ -260,7 +265,12 @@ export const recommendedDoctors = [
         numReviews: "1k",
         hospital: "Green Valley Clinic",
         isAvailable: false,
-        categoryId: "2"
+        categoryId: "2",
+        // ADD MISSING FIELDS
+        patients: 1000, // Derived from numReviews "1k"
+        yearsExperience: 7,
+        workingTime: "Mon-Fri: 9am-5pm",
+        description: "Dr. Emily Faint specializes in dietary planning and nutrition therapy.",
     },
     {
         id: "3",
@@ -833,7 +843,7 @@ export const doctorReviews = [
     {
         id: "1",
         avatar: images.user1,
-        name: "Maria Thompson",
+        name: "Ataberk Kizlier",
         description: "Dr. Jenny exceeded my expectations! The clinic was outstanding and the staff was exceptionally helpful. Highly recommended! 😍",
         rating: 4.8,
         avgRating: 5,

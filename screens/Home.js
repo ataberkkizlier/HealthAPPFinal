@@ -327,7 +327,8 @@ const Home = ({ navigation }) => {
           renderItem={({ item }) => (
             <HorizontalDoctorCard
               {...item}
-              onPress={() => navigation.navigate("DoctorDetails")}
+              onPress={() => navigation.navigate("DoctorDetails", { doctor: item })}
+
             />
           )}
           contentContainerStyle={[styles.doctorsList, {
