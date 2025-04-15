@@ -6,6 +6,7 @@ import { FONTS } from './constants/fonts';
 import AppNavigation from './navigations/AppNavigation';
 import { LogBox } from 'react-native';
 import { ThemeProvider } from './theme/ThemeProvider';
+import { WaterIntakeProvider } from './context/WaterIntakeContext'; // Add this
 
 LogBox.ignoreAllLogs();
 SplashScreen.preventAutoHideAsync();
@@ -29,10 +30,12 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider onLayout={onLayoutRootView}>
-        <AppNavigation />
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <WaterIntakeProvider> {/* Wrap everything with this */}
+      <ThemeProvider>
+        <SafeAreaProvider onLayout={onLayoutRootView}>
+          <AppNavigation />
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </WaterIntakeProvider>
   );
 }

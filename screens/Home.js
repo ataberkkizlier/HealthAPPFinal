@@ -8,6 +8,8 @@ import { categories, recommendedDoctors } from '../data';
 import SubHeaderItem from '../components/SubHeaderItem';
 import HorizontalDoctorCard from '../components/HorizontalDoctorCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useWaterIntake } from '../context/WaterIntakeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const MetricCard = React.memo(({
   icon,
@@ -21,6 +23,16 @@ const MetricCard = React.memo(({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
+
+  // Sync localValue with value prop when it changes, but not while the input is focused
+  React.useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(String(value));
+    }
+  }, [value, isFocused]);
+
+  // Log to confirm the value prop and localValue
+  console.log(`MetricCard (${label}) - value prop:`, value, 'localValue:', localValue);
 
   const handleBlur = () => {
     setIsFocused(false);
@@ -78,24 +90,37 @@ const MetricCard = React.memo(({
 
 const Home = ({ navigation }) => {
   const { dark, colors } = useTheme();
+  const { waterIntake, percentage, dailyGoal, updateWaterIntake } = useWaterIntake();
   const [healthMetrics, setHealthMetrics] = useState({
     nutrition: 90,
     workout: 75,
-    water: 90,
     mental: 80,
     sleep: 70,
     steps: 6500,
     bloodPressure: '120/80'
   });
+  const [forceRender, setForceRender] = useState(0); // Add this to force re-render
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage);
+      setForceRender(prev => prev + 1); // Force re-render by updating state
+    }, [waterIntake, percentage])
+  );
 
   const overallScore = Math.round(
-    (healthMetrics.nutrition + healthMetrics.workout + healthMetrics.water +
+    (healthMetrics.nutrition + healthMetrics.workout + percentage +
       healthMetrics.mental + healthMetrics.sleep) / 5
   );
 
   const updateMetric = useCallback((metric, value) => {
-    let processedValue = value;
+    if (metric === 'water') {
+      const mlValue = Math.round((parseInt(value) || 0) * dailyGoal / 100);
+      updateWaterIntake(mlValue);
+      return;
+    }
 
+    let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
     } else if (metric !== 'steps') {
@@ -108,7 +133,7 @@ const Home = ({ navigation }) => {
       ...prev,
       [metric]: processedValue
     }));
-  }, []);
+  }, [dailyGoal, updateWaterIntake]);
 
   const renderHeader = () => {
     return (
@@ -213,7 +238,7 @@ const Home = ({ navigation }) => {
           unit="%"
           color="#3A86FF"
           dark={dark}
-          value={healthMetrics.water}
+          value={percentage}
           onUpdate={updateMetric}
         />
         <MetricCard
@@ -257,7 +282,6 @@ const Home = ({ navigation }) => {
       </View>
     </View>
   );
-
 
   const renderCategories = () => (
     <View>
@@ -328,7 +352,6 @@ const Home = ({ navigation }) => {
             <HorizontalDoctorCard
               {...item}
               onPress={() => navigation.navigate("DoctorDetails", { doctor: item })}
-
             />
           )}
           contentContainerStyle={[styles.doctorsList, {
@@ -353,7 +376,8 @@ const Home = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-//
+
+// Styles remain unchanged
 const styles = StyleSheet.create({
   area: {
     flex: 1,
@@ -436,7 +460,6 @@ const styles = StyleSheet.create({
   healthContainer: {
     marginBottom: 24,
   },
-  // Updated Score Circle
   scoreCircle: {
     width: 180,
     height: 180,
@@ -472,7 +495,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
-  // Updated Metrics Grid
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -508,7 +530,6 @@ const styles = StyleSheet.create({
     fontFamily: 'medium',
     color: COLORS.greyscale900
   },
-  // Improved Value Alignment
   metricValueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -536,7 +557,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
   },
-  // Rest of the styles remain the same
   categoryItem: {
     alignItems: 'center',
     justifyContent: 'center',

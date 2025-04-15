@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { useWaterIntake } from '../context/WaterIntakeContext';
 
 export default function WaterIntake({ navigation }) {
-  const [intake, setIntake] = useState('');
-  const [totalIntake, setTotalIntake] = useState(0);
+  const [intake, setIntake] = React.useState('');
+  const { updateWaterIntake, waterIntake, dailyGoal } = useWaterIntake();
 
   const handleAddIntake = () => {
     const intakeValue = parseInt(intake);
     if (!isNaN(intakeValue)) {
-      setTotalIntake(totalIntake + intakeValue);
+      const newIntake = waterIntake + intakeValue;
+      updateWaterIntake(newIntake);
+      console.log('Added intake:', intakeValue, 'New total before update:', newIntake, 'Percentage before update:', Math.round((newIntake / dailyGoal) * 100));
       setIntake('');
     }
   };
+
+  // Log the context values after render to confirm update
+  console.log('WaterIntake.js render - Current waterIntake:', waterIntake, 'Percentage:', Math.round((waterIntake / dailyGoal) * 100));
 
   return (
     <View style={styles.container}>
@@ -27,7 +33,7 @@ export default function WaterIntake({ navigation }) {
         <Text style={styles.addButtonText}>Add</Text>
       </TouchableOpacity>
       <Text style={styles.result}>
-        Total Water Intake: {totalIntake} ml
+        Total Water Intake: {waterIntake} ml / {dailyGoal} ml
       </Text>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Home')}>
         <Text style={styles.backButtonText}>Back to Home</Text>
@@ -42,7 +48,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f0f8ff', // Light background color
+    backgroundColor: '#f0f8ff',
   },
   title: {
     fontSize: 28,
