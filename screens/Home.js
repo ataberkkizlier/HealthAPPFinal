@@ -92,10 +92,10 @@ const Home = ({ navigation }) => {
   const { waterIntake, percentage, dailyGoal, updateWaterIntake } = useWaterIntake();
   const { steps, dailyGoal: stepsDailyGoal, updateSteps } = useSteps();
   const [healthMetrics, setHealthMetrics] = useState({
-    nutrition: 90,
-    workout: 75,
-    mental: 80,
-    sleep: 70,
+    nutrition: 0,
+    workout: 0,
+    mental: 0,
+    sleep: 0,
     bloodPressure: '120/80'
   });
   const [forceRender, setForceRender] = useState(0);
