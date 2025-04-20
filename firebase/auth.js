@@ -11,16 +11,22 @@ import {
 } from 'firebase/auth'
 import { auth } from './config'
 
+// Debug Firebase Auth
+console.log('Firebase Auth in firebase/auth.js:', !!auth);
+
 // Register with email and password
 export const registerWithEmailAndPassword = async (email, password) => {
     try {
+        console.log('Registering with email:', email);
         const userCredential = await createUserWithEmailAndPassword(
             auth,
             email,
             password
         )
+        console.log('Registration successful:', userCredential.user.uid);
         return { user: userCredential.user, error: null }
     } catch (error) {
+        console.error('Registration failed:', error.code, error.message);
         return { user: null, error: error.message }
     }
 }
@@ -28,13 +34,16 @@ export const registerWithEmailAndPassword = async (email, password) => {
 // Login with email and password
 export const loginWithEmailAndPassword = async (email, password) => {
     try {
+        console.log('Logging in with email:', email);
         const userCredential = await signInWithEmailAndPassword(
             auth,
             email,
             password
         )
+        console.log('Login successful:', userCredential.user.uid);
         return { user: userCredential.user, error: null }
     } catch (error) {
+        console.error('Login failed:', error.code, error.message);
         return { user: null, error: error.message }
     }
 }

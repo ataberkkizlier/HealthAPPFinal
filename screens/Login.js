@@ -21,6 +21,7 @@ import SocialButton from '../components/SocialButton'
 import OrSeparator from '../components/OrSeparator'
 import { useTheme } from '../theme/ThemeProvider'
 import { loginWithEmailAndPassword } from '../firebase/auth'
+import { signInWithGoogle } from '../services/auth'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const isTestMode = false
@@ -150,10 +151,21 @@ const Login = ({ navigation }) => {
     }
 
     // Implementing google authentication
-    const googleAuthHandler = () => {
-        console.log('Google Authentication')
-        // Implement Firebase Google Authentication
-    }
+    const googleAuthHandler = async () => {
+        try {
+            const user = await signInWithGoogle();
+            console.log("Google authentication successful", user?.uid);
+            if (user) {
+                navigation.navigate("Main");
+            }
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+            Alert.alert(
+                "Authentication Error",
+                error.message || "Could not sign in with Google. Please try again."
+            );
+        }
+    };
 
     return (
         <SafeAreaView

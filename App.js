@@ -8,6 +8,14 @@ import { LogBox, Platform } from 'react-native'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { WaterIntakeProvider } from './context/WaterIntakeContext'
 import { AuthProvider } from './context/AuthContext'
+// Import Firebase explicitly to ensure it's initialized before anything else
+import './firebase/config';
+
+// Remove direct auth import as we'll get it from the provider
+// import { auth } from './firebase/config'
+
+// Add debugging for Firebase
+// console.log('Firebase Auth in App.js:', !!auth);
 
 SplashScreen.preventAutoHideAsync()
 
