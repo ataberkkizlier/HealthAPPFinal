@@ -9,6 +9,7 @@ import SubHeaderItem from '../components/SubHeaderItem';
 import HorizontalDoctorCard from '../components/HorizontalDoctorCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useWaterIntake } from '../context/WaterIntakeContext';
+import { useSteps } from '../context/StepsContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 const MetricCard = React.memo(({
@@ -24,14 +25,12 @@ const MetricCard = React.memo(({
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
 
-  // Sync localValue with value prop when it changes, but not while the input is focused
   React.useEffect(() => {
     if (!isFocused) {
       setLocalValue(String(value));
     }
   }, [value, isFocused]);
 
-  // Log to confirm the value prop and localValue
   console.log(`MetricCard (${label}) - value prop:`, value, 'localValue:', localValue);
 
   const handleBlur = () => {
@@ -91,26 +90,44 @@ const MetricCard = React.memo(({
 const Home = ({ navigation }) => {
   const { dark, colors } = useTheme();
   const { waterIntake, percentage, dailyGoal, updateWaterIntake } = useWaterIntake();
+  const { steps, dailyGoal: stepsDailyGoal, updateSteps } = useSteps();
   const [healthMetrics, setHealthMetrics] = useState({
     nutrition: 90,
     workout: 75,
     mental: 80,
     sleep: 70,
-    steps: 6500,
     bloodPressure: '120/80'
   });
-  const [forceRender, setForceRender] = useState(0); // Add this to force re-render
+  const [forceRender, setForceRender] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage);
-      setForceRender(prev => prev + 1); // Force re-render by updating state
-    }, [waterIntake, percentage])
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps);
+      setForceRender(prev => prev + 1);
+    }, [waterIntake, percentage, steps])
   );
 
+  // Calculate steps percentage (similar to water intake percentage)
+  const stepsPercentage = Math.min(100, (steps / stepsDailyGoal) * 100);
+
+  // Define weights for each metric (total should be 100%)
+  const weights = {
+    nutrition: 0.20, // 20%
+    workout: 0.20,  // 20%
+    water: 0.15,    // 15%
+    mental: 0.15,   // 15%
+    sleep: 0.20,    // 20%
+    steps: 0.10     // 10%
+  };
+
+  // Calculate weighted overall score
   const overallScore = Math.round(
-    (healthMetrics.nutrition + healthMetrics.workout + percentage +
-      healthMetrics.mental + healthMetrics.sleep) / 5
+    (healthMetrics.nutrition * weights.nutrition) +
+    (healthMetrics.workout * weights.workout) +
+    (percentage * weights.water) +
+    (healthMetrics.mental * weights.mental) +
+    (healthMetrics.sleep * weights.sleep) +
+    (stepsPercentage * weights.steps)
   );
 
   const updateMetric = useCallback((metric, value) => {
@@ -120,20 +137,24 @@ const Home = ({ navigation }) => {
       return;
     }
 
+    if (metric === 'steps') {
+      const stepValue = Math.min(50000, Math.max(0, parseInt(value) || 0));
+      updateSteps(stepValue);
+      return;
+    }
+
     let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
-    } else if (metric !== 'steps') {
-      processedValue = Math.min(100, Math.max(0, parseInt(value) || 0));
     } else {
-      processedValue = Math.min(50000, Math.max(0, parseInt(value) || 0));
+      processedValue = Math.min(100, Math.max(0, parseInt(value) || 0));
     }
 
     setHealthMetrics(prev => ({
       ...prev,
       [metric]: processedValue
     }));
-  }, [dailyGoal, updateWaterIntake]);
+  }, [dailyGoal, updateWaterIntake, updateSteps]);
 
   const renderHeader = () => {
     return (
@@ -168,7 +189,7 @@ const Home = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    )
+    );
   };
 
   const renderSearchBar = () => {
@@ -195,7 +216,7 @@ const Home = ({ navigation }) => {
           style={styles.filterIcon}
         />
       </TouchableOpacity>
-    )
+    );
   };
 
   const renderHealthMetrics = () => (
@@ -267,7 +288,7 @@ const Home = ({ navigation }) => {
           metric="steps"
           color="#8AC926"
           dark={dark}
-          value={healthMetrics.steps}
+          value={steps}
           onUpdate={updateMetric}
         />
         <MetricCard
@@ -359,7 +380,7 @@ const Home = ({ navigation }) => {
           }]}
         />
       </View>
-    )
+    );
   };
 
   return (
