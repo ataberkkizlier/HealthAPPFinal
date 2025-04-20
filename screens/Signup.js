@@ -80,10 +80,10 @@ const Signup = ({ navigation }) => {
             const password = formState.inputValues.password
 
             console.log('Attempting to register with email:', email);
-            
+
             // Debug Firebase auth object
             console.log('Firebase auth available:', !!auth);
-            
+
             const { user, error: signupError } =
                 await registerWithEmailAndPassword(email, password)
 
@@ -91,7 +91,7 @@ const Signup = ({ navigation }) => {
                 console.error('Signup error from Firebase:', signupError);
                 setError(signupError)
                 setIsLoading(false)
-                
+
                 // Show more specific error to user
                 Alert.alert(
                     'Registration Error',
@@ -108,7 +108,7 @@ const Signup = ({ navigation }) => {
             console.error('Uncaught signup error:', err);
             setError(err.message || 'An error occurred during registration.')
             setIsLoading(false)
-            
+
             // Show detailed error
             Alert.alert(
                 'Registration Error',
@@ -141,7 +141,7 @@ const Signup = ({ navigation }) => {
             console.log("Testing Firebase connection...");
             const result = await testFirebase();
             console.log("Firebase test result:", result);
-            
+
             Alert.alert(
                 result.success ? "Firebase Test Success" : "Firebase Test Failed",
                 result.message
@@ -218,8 +218,8 @@ const Signup = ({ navigation }) => {
                                     isChecked
                                         ? COLORS.primary
                                         : dark
-                                          ? COLORS.primary
-                                          : 'gray'
+                                            ? COLORS.primary
+                                            : 'gray'
                                 }
                                 onValueChange={setChecked}
                             />
@@ -255,7 +255,7 @@ const Signup = ({ navigation }) => {
                         )}
                     </Button>
                     <Button
-                        title="Test Firebase Connection"
+                        title=" Privacy Policy"
                         onPress={testFirebaseConnection}
                         style={[styles.button, { marginTop: 10, backgroundColor: '#ff9900' }]}
                     />

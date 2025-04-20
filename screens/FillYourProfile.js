@@ -1,3 +1,4 @@
+// screens/FillYourProfile.js
 import {
     View,
     Text,
@@ -11,24 +12,24 @@ import {
     FlatList,
     TextInput,
     ActivityIndicator,
-} from 'react-native'
-import React, { useCallback, useEffect, useReducer, useState } from 'react'
-import { COLORS, SIZES, FONTS, icons } from '../constants'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Header from '../components/Header'
-import { reducer } from '../utils/reducers/formReducers'
-import { validateInput } from '../utils/actions/formActions'
-import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons'
-import { launchImagePicker } from '../utils/ImagePickerHelper'
-import Input from '../components/Input'
-import { getFormatedDate } from 'react-native-modern-datepicker'
-import DatePickerModal from '../components/DatePickerModal'
-import Button from '../components/Button'
-import { useTheme } from '../theme/ThemeProvider'
-import { updateUserProfile } from '../firebase/auth'
-import { useAuth } from '../context/AuthContext'
+} from 'react-native';
+import React, { useCallback, useEffect, useReducer, useState } from 'react';
+import { COLORS, SIZES, FONTS, icons } from '../constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Header from '../components/Header';
+import { reducer } from '../utils/reducers/formReducers';
+import { validateInput } from '../utils/actions/formActions';
+import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { launchImagePicker } from '../utils/ImagePickerHelper';
+import Input from '../components/Input';
+import { getFormatedDate } from 'react-native-modern-datepicker';
+import DatePickerModal from '../components/DatePickerModal';
+import Button from '../components/Button';
+import { useTheme } from '../theme/ThemeProvider';
+import { updateUserProfile } from '../firebase/auth';
+import { useAuth } from '../context/AuthContext';
 
-const isTestMode = false
+const isTestMode = false;
 
 const initialState = {
     inputValues: {
@@ -44,94 +45,93 @@ const initialState = {
         phoneNumber: false,
     },
     formIsValid: false,
-}
+};
 
 const FillYourProfile = ({ navigation, route }) => {
-    const { user } = useAuth()
-    const [image, setImage] = useState(null)
-    const [error, setError] = useState()
-    const [formState, dispatchFormState] = useReducer(reducer, initialState)
-    const [areas, setAreas] = useState([])
-    const [selectedArea, setSelectedArea] = useState(null)
-    const [modalVisible, setModalVisible] = useState(false)
-    const [openStartDatePicker, setOpenStartDatePicker] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    const { colors, dark } = useTheme()
+    const { user } = useAuth();
+    const [image, setImage] = useState(null);
+    const [error, setError] = useState();
+    const [formState, dispatchFormState] = useReducer(reducer, initialState);
+    const [areas, setAreas] = useState([]);
+    const [selectedArea, setSelectedArea] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [openStartDatePicker, setOpenStartDatePicker] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const { colors, dark } = useTheme();
 
-    const today = new Date()
-    const startDate = getFormatedDate(
-        new Date(today.setDate(today.getDate() + 1)),
-        'YYYY/MM/DD'
-    )
+    const today = new Date();
+    // Set minimum date to 1900 for birthdate selection
+    const minDate = getFormatedDate(new Date(1900, 0, 1), 'YYYY/MM/DD'); // January 1, 1900
+    const maxDate = getFormatedDate(today, 'YYYY/MM/DD'); // Today's date
 
-    const [startedDate, setStartedDate] = useState('12/12/2023')
+    const [startedDate, setStartedDate] = useState(''); // Remove default date
 
     // Pre-fill email if available
     useEffect(() => {
         if (user && user.email) {
-            inputChangedHandler('email', user.email)
-
-            // Update formState manually since inputChangedHandler is async
+            inputChangedHandler('email', user.email);
             dispatchFormState({
                 inputId: 'email',
                 validationResult: validateInput('email', user.email),
                 inputValue: user.email,
-            })
+            });
         }
-    }, [user])
+    }, [user]);
 
     const handleOnPressStartDate = () => {
-        setOpenStartDatePicker(!openStartDatePicker)
-    }
+        setOpenStartDatePicker(!openStartDatePicker);
+    };
 
     const inputChangedHandler = useCallback(
         (inputId, inputValue) => {
-            const result = validateInput(inputId, inputValue)
-            dispatchFormState({ inputId, validationResult: result, inputValue })
+            const result = validateInput(inputId, inputValue);
+            dispatchFormState({ inputId, validationResult: result, inputValue });
         },
         [dispatchFormState]
-    )
+    );
 
     useEffect(() => {
         if (error) {
-            Alert.alert('Profil Güncelleme Hatası', error)
-            setError(null)
+            Alert.alert('Profil Güncelleme Hatası', error);
+            setError(null);
         }
-    }, [error])
+    }, [error]);
 
-    // Profil bilgilerini kaydetme işlevi
     const saveProfileHandler = async () => {
         if (!formState.inputValues.fullName) {
-            Alert.alert('Eksik Bilgi', 'Lütfen tam adınızı girin')
-            return
+            Alert.alert('Eksik Bilgi', 'Lütfen tam adınızı girin');
+            return;
         }
 
-        setIsLoading(true)
+        if (!startedDate) {
+            Alert.alert('Eksik Bilgi', 'Lütfen doğum tarihinizi seçin');
+            return;
+        }
+
+        setIsLoading(true);
         try {
             const { success, error: updateError } = await updateUserProfile(
                 formState.inputValues.fullName,
-                image ? image.uri : null
-            )
+                image ? image.uri : null,
+                startedDate
+            );
 
             if (updateError) {
-                setError(updateError)
-                setIsLoading(false)
-                return
+                setError(updateError);
+                setIsLoading(false);
+                return;
             }
 
             if (success) {
-                setIsLoading(false)
-                navigation.navigate('CreateNewPIN')
+                setIsLoading(false);
+                navigation.navigate('CreateNewPIN');
             }
         } catch (err) {
-            setIsLoading(false)
-            setError(
-                err.message || 'Profil bilgileri güncellenirken bir hata oluştu'
-            )
+            setIsLoading(false);
+            setError(err.message || 'Profil bilgileri güncellenirken bir hata oluştu');
         }
-    }
+    };
 
-    // fetch codes from rescountries api
     useEffect(() => {
         fetch('https://restcountries.com/v2/all')
             .then((response) => response.json())
@@ -142,42 +142,36 @@ const FillYourProfile = ({ navigation, route }) => {
                         item: item.name,
                         callingCode: `+${item.callingCodes[0]}`,
                         flag: `https://flagsapi.com/${item.alpha2Code}/flat/64.png`,
-                    }
-                })
+                    };
+                });
 
-                setAreas(areaData)
+                setAreas(areaData);
                 if (areaData.length > 0) {
-                    let defaultData = areaData.filter((a) => a.code == 'US')
-
+                    let defaultData = areaData.filter((a) => a.code == 'US');
                     if (defaultData.length > 0) {
-                        setSelectedArea(defaultData[0])
+                        setSelectedArea(defaultData[0]);
                     }
                 }
             })
             .catch((error) => {
-                console.error('Ülke verileri yüklenirken hata:', error)
-                // Varsayılan bir değer ayarlayabiliriz
+                console.error('Ülke verileri yüklenirken hata:', error);
                 setSelectedArea({
                     code: 'US',
                     item: 'United States',
                     callingCode: '+1',
                     flag: 'https://flagsapi.com/US/flat/64.png',
-                })
-            })
-    }, [])
+                });
+            });
+    }, []);
 
     const pickImage = async () => {
         try {
-            const tempUri = await launchImagePicker()
+            const tempUri = await launchImagePicker();
+            if (!tempUri) return;
+            setImage({ uri: tempUri });
+        } catch (error) { }
+    };
 
-            if (!tempUri) return
-
-            // set the image
-            setImage({ uri: tempUri })
-        } catch (error) {}
-    }
-
-    // render countries codes modal
     function RenderAreasCodesModal() {
         const renderItem = ({ item }) => {
             return (
@@ -187,7 +181,8 @@ const FillYourProfile = ({ navigation, route }) => {
                         flexDirection: 'row',
                     }}
                     onPress={() => {
-                        setSelectedArea(item), setModalVisible(false)
+                        setSelectedArea(item);
+                        setModalVisible(false);
                     }}
                 >
                     <Image
@@ -199,21 +194,13 @@ const FillYourProfile = ({ navigation, route }) => {
                             marginRight: 10,
                         }}
                     />
-                    <Text style={{ fontSize: 16, color: '#fff' }}>
-                        {item.item}
-                    </Text>
+                    <Text style={{ fontSize: 16, color: '#fff' }}>{item.item}</Text>
                 </TouchableOpacity>
-            )
-        }
+            );
+        };
         return (
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-            >
-                <TouchableWithoutFeedback
-                    onPress={() => setModalVisible(false)}
-                >
+            <Modal animationType="slide" transparent={true} visible={modalVisible}>
+                <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
                     <View
                         style={{
                             flex: 1,
@@ -253,34 +240,22 @@ const FillYourProfile = ({ navigation, route }) => {
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
-        )
+        );
     }
 
     return (
-        <SafeAreaView
-            style={[styles.area, { backgroundColor: colors.background }]}
-        >
-            <View
-                style={[
-                    styles.container,
-                    { backgroundColor: colors.background },
-                ]}
-            >
+        <SafeAreaView style={[styles.area, { backgroundColor: colors.background }]}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <Header title="Fill Your Profile" />
                 <ScrollView showsVerticalScrollIndicator={false}>
                     <View style={{ alignItems: 'center', marginVertical: 12 }}>
                         <View style={styles.avatarContainer}>
                             <Image
-                                source={
-                                    image === null ? icons.userDefault2 : image
-                                }
+                                source={image === null ? icons.userDefault2 : image}
                                 resizeMode="cover"
                                 style={styles.avatar}
                             />
-                            <TouchableOpacity
-                                onPress={pickImage}
-                                style={styles.pickImage}
-                            >
+                            <TouchableOpacity onPress={pickImage} style={styles.pickImage}>
                                 <MaterialCommunityIcons
                                     name="pencil-outline"
                                     size={24}
@@ -316,21 +291,13 @@ const FillYourProfile = ({ navigation, route }) => {
                             value={formState.inputValues.email}
                             editable={!user}
                         />
-                        <View
-                            style={{
-                                width: SIZES.width - 32,
-                            }}
-                        >
+                        <View style={{ width: SIZES.width - 32 }}>
                             <TouchableOpacity
                                 style={[
                                     styles.inputBtn,
                                     {
-                                        backgroundColor: dark
-                                            ? COLORS.dark2
-                                            : COLORS.greyscale500,
-                                        borderColor: dark
-                                            ? COLORS.dark2
-                                            : COLORS.greyscale500,
+                                        backgroundColor: dark ? COLORS.dark2 : COLORS.greyscale500,
+                                        borderColor: dark ? COLORS.dark2 : COLORS.greyscale500,
                                     },
                                 ]}
                                 onPress={handleOnPressStartDate}
@@ -341,25 +308,17 @@ const FillYourProfile = ({ navigation, route }) => {
                                         color: COLORS.grayscale400,
                                     }}
                                 >
-                                    {startedDate}
+                                    {startedDate || 'Select Birth Date'}
                                 </Text>
-                                <Feather
-                                    name="calendar"
-                                    size={24}
-                                    color={COLORS.grayscale400}
-                                />
+                                <Feather name="calendar" size={24} color={COLORS.grayscale400} />
                             </TouchableOpacity>
                         </View>
                         <View
                             style={[
                                 styles.inputContainer,
                                 {
-                                    backgroundColor: dark
-                                        ? COLORS.dark2
-                                        : COLORS.greyscale500,
-                                    borderColor: dark
-                                        ? COLORS.dark2
-                                        : COLORS.greyscale500,
+                                    backgroundColor: dark ? COLORS.dark2 : COLORS.greyscale500,
+                                    borderColor: dark ? COLORS.dark2 : COLORS.greyscale500,
                                 },
                             ]}
                         >
@@ -374,24 +333,14 @@ const FillYourProfile = ({ navigation, route }) => {
                                         style={styles.downIcon}
                                     />
                                 </View>
-                                <View
-                                    style={{
-                                        justifyContent: 'center',
-                                        marginLeft: 5,
-                                    }}
-                                >
+                                <View style={{ justifyContent: 'center', marginLeft: 5 }}>
                                     <Image
                                         source={{ uri: selectedArea?.flag }}
                                         contentFit="contain"
                                         style={styles.flagIcon}
                                     />
                                 </View>
-                                <View
-                                    style={{
-                                        justifyContent: 'center',
-                                        marginLeft: 5,
-                                    }}
-                                >
+                                <View style={{ justifyContent: 'center', marginLeft: 5 }}>
                                     <Text
                                         style={{
                                             color: dark ? COLORS.white : '#111',
@@ -402,7 +351,6 @@ const FillYourProfile = ({ navigation, route }) => {
                                     </Text>
                                 </View>
                             </TouchableOpacity>
-                            {/* Phone Number Text Input */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Enter your phone number"
@@ -414,12 +362,15 @@ const FillYourProfile = ({ navigation, route }) => {
                     </View>
                 </ScrollView>
                 <DatePickerModal
-                    onSelectedChange={(date) => {
-                        setStartedDate(date)
-                        setOpenStartDatePicker(false)
+                    open={openStartDatePicker}
+                    startDate={minDate} // Allow dates from 1900
+                    maxDate={maxDate} // Restrict to today
+                    selectedDate={startedDate}
+                    onChangeStartDate={(date) => {
+                        setStartedDate(date);
+                        setOpenStartDatePicker(false);
                     }}
-                    onCloseModal={() => setOpenStartDatePicker(false)}
-                    showModal={openStartDatePicker}
+                    onClose={() => setOpenStartDatePicker(false)}
                 />
                 <RenderAreasCodesModal />
                 <View style={styles.buttonContainer}>
@@ -446,8 +397,8 @@ const FillYourProfile = ({ navigation, route }) => {
                 </View>
             </View>
         </SafeAreaView>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     area: {
@@ -577,6 +528,6 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
         borderColor: COLORS.primary,
     },
-})
+});
 
-export default FillYourProfile
+export default FillYourProfile;

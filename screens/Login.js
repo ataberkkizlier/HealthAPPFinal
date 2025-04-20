@@ -98,7 +98,7 @@ const Login = ({ navigation }) => {
 
     const loginHandler = async () => {
         if (!formState.formIsValid) {
-            Alert.alert('Invalid Input', 'Please check the errors in the form.')
+            Alert.alert('User not found, please check your credentials')
             return
         }
 
@@ -237,8 +237,8 @@ const Login = ({ navigation }) => {
                                     isChecked
                                         ? COLORS.primary
                                         : dark
-                                          ? COLORS.primary
-                                          : 'gray'
+                                            ? COLORS.primary
+                                            : 'gray'
                                 }
                                 onValueChange={setChecked}
                             />
