@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "653543625303",
+    "project_id": "healthapp-ba6b2",
+    "storage_bucket": "healthapp-ba6b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:653543625303:android:ef09ae3cb70f93bdfac912",
+        "android_client_info": {
+          "package_name": "com.anonymous.HealthApp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "653543625303-vm4p22gqgrr1h7ta3a604habq4rodncd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anonymous.HealthApp",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "653543625303-b6b7krci4l31eaa05alq8nm0tekmfo1p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4NetoC3-P1u5qKEartxfK38r4H1OuIIw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "653543625303-b6b7krci4l31eaa05alq8nm0tekmfo1p.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "653543625303-2n72cgatuqc4839kvhrcdg2pu64h4jt3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anonymous.HealthApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

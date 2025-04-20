@@ -18,20 +18,25 @@
       "supportsTablet": true,
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "bundleIdentifier": "com.healthapp.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#246BFD"
-      }
+      },
+      "package": "com.healthapp.app",
+      "googleServicesFile": "./GoogleService-Info.json"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
+    ],
+    "scheme": "healthapp"
   }
 }

@@ -21,6 +21,8 @@ import SocialButton from '../components/SocialButton'
 import OrSeparator from '../components/OrSeparator'
 import { useTheme } from '../theme/ThemeProvider'
 import { registerWithEmailAndPassword } from '../firebase/auth'
+import { auth } from '../firebase/config'
+import testFirebase from '../firebase/firebaseTest'
 
 const isTestMode = false
 
@@ -77,12 +79,24 @@ const Signup = ({ navigation }) => {
             const email = formState.inputValues.email
             const password = formState.inputValues.password
 
+            console.log('Attempting to register with email:', email);
+            
+            // Debug Firebase auth object
+            console.log('Firebase auth available:', !!auth);
+            
             const { user, error: signupError } =
                 await registerWithEmailAndPassword(email, password)
 
             if (signupError) {
+                console.error('Signup error from Firebase:', signupError);
                 setError(signupError)
                 setIsLoading(false)
+                
+                // Show more specific error to user
+                Alert.alert(
+                    'Registration Error',
+                    `Could not register: ${signupError}`
+                );
                 return
             }
 
@@ -91,8 +105,15 @@ const Signup = ({ navigation }) => {
             setIsLoading(false)
             navigation.navigate('FillYourProfile', { userId: user.uid })
         } catch (err) {
+            console.error('Uncaught signup error:', err);
             setError(err.message || 'An error occurred during registration.')
             setIsLoading(false)
+            
+            // Show detailed error
+            Alert.alert(
+                'Registration Error',
+                `Error details: ${err.message || 'Unknown error'}`
+            );
         }
     }
 
@@ -112,6 +133,26 @@ const Signup = ({ navigation }) => {
     const googleAuthHandler = () => {
         console.log('Google Authentication')
         // Implement Firebase Google Authentication
+    }
+
+    // Test Firebase connection
+    const testFirebaseConnection = async () => {
+        try {
+            console.log("Testing Firebase connection...");
+            const result = await testFirebase();
+            console.log("Firebase test result:", result);
+            
+            Alert.alert(
+                result.success ? "Firebase Test Success" : "Firebase Test Failed",
+                result.message
+            );
+        } catch (error) {
+            console.error("Firebase test error:", error);
+            Alert.alert(
+                "Firebase Test Error",
+                "Error testing Firebase: " + error.message
+            );
+        }
     }
 
     return (
@@ -213,6 +254,11 @@ const Signup = ({ navigation }) => {
                             />
                         )}
                     </Button>
+                    <Button
+                        title="Test Firebase Connection"
+                        onPress={testFirebaseConnection}
+                        style={[styles.button, { marginTop: 10, backgroundColor: '#ff9900' }]}
+                    />
                     <View>
                         <OrSeparator text="or continue with" />
                         <View style={styles.socialBtnContainer}>

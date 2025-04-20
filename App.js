@@ -10,6 +10,9 @@ import { WaterIntakeProvider } from './context/WaterIntakeContext';
 import { AuthProvider } from './context/AuthContext';
 import { StepsProvider } from './context/StepsContext';
 
+// Firebase config import
+import './firebase/config';
+
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
@@ -43,4 +46,4 @@ export default function App() {
       </WaterIntakeProvider>
     </AuthProvider>
   );
-}
+} 
