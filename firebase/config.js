@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getApps, initializeApp as initializeFirebaseApp } from 'firebase/app';
+import { getApps } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
 
 // Your web app's Firebase configuration
 // Lütfen bu değerleri Firebase console'dan aldığınız gerçek değerlerle değiştirin
@@ -14,9 +15,6 @@ const firebaseConfig = {
     messagingSenderId: "653543625303",
     appId: "1:653543625303:web:60fc809f867eaf7cfac912"
   };
-
-// Debugging Firebase initialization
-console.log("Initializing Firebase with config:", JSON.stringify(firebaseConfig));
 
 // Check if Firebase is already initialized
 let app;
@@ -35,8 +33,10 @@ try {
 }
 
 const auth = getAuth(app)
+const database = getDatabase(app);
 
 console.log("Firebase app initialized:", !!app);
 console.log("Firebase auth initialized:", !!auth);
+console.log("Firebase database initialized:", !!database);
 
-export { auth }
+export { auth, database }

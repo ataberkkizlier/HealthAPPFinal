@@ -72,7 +72,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ActivityIndicator, Text, View } from 'react-native'
 import { COLORS } from '../constants'
 
-// Category Screens
+// Health Dashboard Import
+import HealthDashboard from '../screens/HealthDashboard'
+
+// Health Category Screens
 import Workout from '../screens/Workout'
 import Nutrition from '../screens/Nutrition'
 import WaterIntake from '../screens/WaterIntake'
@@ -197,24 +200,18 @@ const AppNavigation = () => {
                 <Stack.Screen name="CreateNewPIN" component={CreateNewPIN} />
                 <Stack.Screen name="Fingerprint" component={Fingerprint} />
 
+                {/* Health Dashboard */}
+                <Stack.Screen name="HealthDashboard" component={HealthDashboard} />
+
                 {/* Category Screens */}
-                <Stack.Screen name="CategoryWorkout" component={Workout} />
-                <Stack.Screen name="CategoryNutrition" component={Nutrition} />
-                <Stack.Screen
-                    name="CategoryWaterIntake"
-                    component={WaterIntake}
-                />
-                <Stack.Screen
-                    name="CategoryMentalHealth"
-                    component={MentalHealth}
-                />
-                <Stack.Screen name="CategorySleep" component={Sleep} />
-                <Stack.Screen name="CategorySteps" component={Steps} />
-                <Stack.Screen
-                    name="CategoryBloodPressure"
-                    component={BloodPressure}
-                />
-                <Stack.Screen name="CategoryOthers" component={Others} />
+                <Stack.Screen name="Workout" component={Workout} />
+                <Stack.Screen name="Nutrition" component={Nutrition} />
+                <Stack.Screen name="WaterIntake" component={WaterIntake} />
+                <Stack.Screen name="MentalHealth" component={MentalHealth} />
+                <Stack.Screen name="Sleep" component={Sleep} />
+                <Stack.Screen name="Steps" component={Steps} />
+                <Stack.Screen name="BloodPressure" component={BloodPressure} />
+                <Stack.Screen name="Others" component={Others} />
 
                 {/* Existing Screens */}
                 <Stack.Screen name="EditProfile" component={EditProfile} />

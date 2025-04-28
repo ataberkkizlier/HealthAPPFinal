@@ -104,7 +104,7 @@ export const faqs = [
     },
     {
         question: 'How can I find doctors specializing in specific medical conditions?',
-        answer: 'You can use the app’s search filters to find doctors specializing in specific medical conditions. Filter results by specialties such as cardiology, dermatology, or pediatrics.',
+        answer: "You can use the app's search filters to find doctors specializing in specific medical conditions. Filter results by specialties such as cardiology, dermatology, or pediatrics.",
         type: "Booking"
     },
     {
@@ -124,7 +124,7 @@ export const faqs = [
     },
     {
         question: 'How can I provide feedback or rate my consultation experience?',
-        answer: 'After your consultation, you can provide feedback and rate your experience through the app’s rating and review system. Your feedback helps us improve our services for future consultations.',
+        answer: "After your consultation, you can provide feedback and rate your experience through the app's rating and review system. Your feedback helps us improve our services for future consultations.",
         type: "General"
     },
     {
@@ -170,36 +170,35 @@ export const categories = [
     },
     {
         id: "1",
-        name: "Nutrition",
-        icon: icons.nutrition1,
-        iconColor: "rgba(36, 107, 253, 1)", // Blue color
-        backgroundColor: "rgba(36, 107, 253, .12)",
-        resizeMode: "contain",
-        screen: "CategoryNutrition",
-    }
-    ,
-    {
-        id: "2",
-        name: "Workout",
-        icon: icons.workoutSon,
+        name: "Water Intake",
+        icon: icons.waterIntake,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategoryWorkout"
+        screen: "WaterIntake"
+    },
+    {
+        id: "2",
+        name: "Nutrition",
+        icon: icons.nutrition,
+        iconColor: "rgba(36, 107, 253, 1)",
+        backgroundColor: "rgba(36, 107, 253, .12)",
+        screen: "Nutrition"
     },
     {
         id: "3",
-        name: "Water Intake",
-        icon: icons.waterSon,
+        name: "Workout",
+        icon: icons.workout,
+        iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategoryWaterIntake"
+        screen: "Workout"
     },
     {
         id: "4",
         name: "Mental Health",
-        icon: icons.mentalWellSon,
+        icon: icons.mentalHealth,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategoryMentalHealth"
+        screen: "MentalHealth"
     },
     {
         id: "5",
@@ -207,7 +206,7 @@ export const categories = [
         icon: icons.sleep,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategorySleep"
+        screen: "Sleep"
     },
     {
         id: "6",
@@ -215,7 +214,7 @@ export const categories = [
         icon: icons.steps,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategorySteps"
+        screen: "Steps"
     },
     {
         id: "7",
@@ -223,7 +222,7 @@ export const categories = [
         icon: icons.bloodPressure,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: "CategoryBloodPressure"
+        screen: "BloodPressure"
     },
     {
         id: "8",
@@ -231,7 +230,7 @@ export const categories = [
         icon: icons.more3,
         iconColor: "rgba(36, 107, 253, 1)",
         backgroundColor: "rgba(36, 107, 253, .12)",
-        screen: null
+        screen: "Others"
     }
 ];
 

@@ -9,6 +9,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { WaterIntakeProvider } from './context/WaterIntakeContext';
 import { AuthProvider } from './context/AuthContext';
 import { StepsProvider } from './context/StepsContext';
+import { auth } from './firebase/config';
 
 // Firebase config import
 import './firebase/config';
@@ -27,6 +28,9 @@ export default function App() {
 
   useEffect(() => {
     setAppReady(true);
+    
+    // We don't need to test database here anymore, as it's handled by AuthContext
+    // when a user logs in
   }, []);
 
   if (!fontsLoaded || !appReady) {

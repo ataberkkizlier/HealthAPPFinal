@@ -7,10 +7,10 @@ import {
 
 // Direct Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDFjrJtBBtoy-PDRgJuDGcmZljMdazK6k",
-  authDomain: "healthapp-bab62.firebaseapp.com",
-  projectId: "healthapp-bab62",
-  storageBucket: "healthapp-bab62.appspot.com",
+  apiKey: "AIzaSyDFjrJjBBtov-PDRg1u0DGcmzLjMdazK6k",
+  authDomain: "healthapp-ba6b2.firebaseapp.com",
+  projectId: "healthapp-ba6b2",
+  storageBucket: "healthapp-ba6b2.firebasestorage.app",
   messagingSenderId: "653543625303",
   appId: "1:653543625303:web:60fc809f867eaf7cfac912"
 };

@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     Image,
     Switch,
+    TextInput,
 } from 'react-native'
 import React, { useState, useRef, useEffect } from 'react'
 import { COLORS, SIZES, icons, images } from '../constants'
@@ -22,16 +23,25 @@ import { logout } from '../firebase/auth'
 const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
     const { dark, colors, setScheme } = useTheme()
-    const { user } = useAuth()
+    const { user, userData, saveHealthData } = useAuth()
     const [userName, setUserName] = useState('')
     const [userEmail, setUserEmail] = useState('')
+    const [weight, setWeight] = useState('')
+    const [height, setHeight] = useState('')
+    const [bloodPressure, setBloodPressure] = useState('')
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
         if (user) {
             setUserName(user.displayName || 'User')
             setUserEmail(user.email || '')
         }
-    }, [user])
+        if (userData) {
+            setWeight(userData.weight?.toString() || '')
+            setHeight(userData.height?.toString() || '')
+            setBloodPressure(userData.bloodPressure || '')
+        }
+    }, [user, userData])
 
     /**
      * Logout handler
@@ -54,6 +64,35 @@ const Profile = ({ navigation }) => {
         } catch (error) {
             console.error('Logout error:', error)
             Alert.alert('Logout Error', 'An error occurred while logging out')
+        }
+    }
+
+    const handleSaveProfile = async () => {
+        if (!user) {
+            Alert.alert('Please login to save your profile')
+            return
+        }
+        
+        setLoading(true)
+        try {
+            const healthData = {
+                weight: weight ? parseFloat(weight) : null,
+                height: height ? parseFloat(height) : null,
+                bloodPressure,
+            }
+            
+            const result = await saveHealthData(healthData)
+            
+            if (result.success) {
+                Alert.alert('Profile saved successfully!')
+            } else {
+                Alert.alert('Failed to save profile: ' + (result.error || 'Unknown error'))
+            }
+        } catch (error) {
+            console.error('Error saving profile:', error)
+            Alert.alert('An error occurred while saving your profile')
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -355,6 +394,54 @@ const Profile = ({ navigation }) => {
                 {renderHeader()}
                 <ScrollView showsVerticalScrollIndicator={false}>
                     {renderProfile()}
+                    <Text style={styles.title}>Your Health Profile</Text>
+                    
+                    <Text style={styles.label}>Email</Text>
+                    <Text style={styles.value}>{userEmail}</Text>
+                    
+                    <Text style={styles.label}>Weight (kg)</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={weight}
+                        onChangeText={setWeight}
+                        placeholder="Enter your weight"
+                        keyboardType="numeric"
+                    />
+                    
+                    <Text style={styles.label}>Height (cm)</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={height}
+                        onChangeText={setHeight}
+                        placeholder="Enter your height"
+                        keyboardType="numeric"
+                    />
+                    
+                    <Text style={styles.label}>Blood Pressure</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={bloodPressure}
+                        onChangeText={setBloodPressure}
+                        placeholder="e.g. 120/80"
+                    />
+                    
+                    <TouchableOpacity 
+                        style={[styles.button, loading && styles.buttonDisabled]}
+                        onPress={handleSaveProfile}
+                        disabled={loading}
+                    >
+                        <Text style={styles.buttonText}>
+                            {loading ? 'Saving...' : 'Save Profile'}
+                        </Text>
+                    </TouchableOpacity>
+                    
+                    {userData && userData.lastUpdated && (
+                        <Text style={styles.lastUpdated}>
+                            Last updated: {new Date(userData.lastUpdated).toLocaleString()}
+                        </Text>
+                    )}
+                    
+                    <View style={styles.spacer} />
                     {renderSettings()}
                 </ScrollView>
             </View>
@@ -595,6 +682,49 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: COLORS.grayscale200,
         marginTop: 12,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginTop: 10,
+        marginBottom: 5,
+    },
+    value: {
+        fontSize: 16,
+        marginBottom: 15,
+        color: '#555',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 5,
+        padding: 10,
+        fontSize: 16,
+        marginBottom: 15,
+    },
+    button: {
+        backgroundColor: '#007BFF',
+        padding: 15,
+        borderRadius: 5,
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    buttonDisabled: {
+        backgroundColor: '#ccc',
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    lastUpdated: {
+        marginTop: 15,
+        color: '#888',
+        fontSize: 12,
+        textAlign: 'center',
+    },
+    spacer: {
+        height: 50,
     },
 })
 
