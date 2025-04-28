@@ -1,24 +1,24 @@
+// components/DatePickerModal.js
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import DatePicker from "react-native-modern-datepicker";
+import DatePicker from 'react-native-modern-datepicker';
 import { COLORS } from '../constants';
 
 const DatePickerModal = ({
   open,
   startDate,
+  maxDate, // Add maxDate prop
   selectedDate,
   onClose,
   onChangeStartDate,
 }) => {
-  const [selectedStartDate, setSelectedStartDate] = useState(selectedDate);
+  const [selectedStartDate, setSelectedStartDate] = useState(selectedDate || startDate);
 
   const handleDateChange = (date) => {
     setSelectedStartDate(date);
-    onChangeStartDate(date);
-  };
-
-  const handleOnPressStartDate = () => {
-    onClose();
+    if (onChangeStartDate) {
+      onChangeStartDate(date);
+    }
   };
 
   const modalVisible = open;
@@ -30,6 +30,7 @@ const DatePickerModal = ({
           <DatePicker
             mode="calendar"
             minimumDate={startDate}
+            maximumDate={maxDate} // Add maximumDate to restrict future dates
             selected={selectedStartDate}
             onDateChange={handleDateChange}
             onSelectedChange={(date) => setSelectedStartDate(date)}
@@ -41,8 +42,9 @@ const DatePickerModal = ({
               mainColor: COLORS.white,
               textSecondaryColor: '#FFFFFF',
               borderColor: COLORS.primary,
-            }} />
-          <TouchableOpacity onPress={handleOnPressStartDate}>
+            }}
+          />
+          <TouchableOpacity onPress={onClose}>
             <Text style={{ color: 'white' }}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -54,18 +56,18 @@ const DatePickerModal = ({
 const styles = StyleSheet.create({
   centeredView: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalView: {
     margin: 20,
     backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 20,
     padding: 35,
-    width: "90%",
-    shadowColor: "#000",
+    width: '90%',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -75,6 +77,5 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 });
-
 
 export default DatePickerModal;
