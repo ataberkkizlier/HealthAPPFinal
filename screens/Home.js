@@ -11,6 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useWaterIntake } from '../context/WaterIntakeContext';
 import { useSteps } from '../context/StepsContext';
 import { useWorkout } from '../context/WorkoutContext';
+import { useNutrition } from '../context/NutritionContext';
+import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 const MetricCard = React.memo(({
@@ -115,8 +117,9 @@ const Home = ({ navigation }) => {
   const { waterIntake, percentage, dailyGoal, updateWaterIntake } = useWaterIntake();
   const { steps, dailyGoal: stepsDailyGoal, updateSteps } = useSteps();
   const { workoutPercentage, updateWorkoutPercentage } = useWorkout();
+  const { nutritionPercentage, updateNutritionPercentage } = useNutrition();
+  const { user } = useAuth();
   const [healthMetrics, setHealthMetrics] = useState({
-    nutrition: 0,
     mental: 0,
     sleep: 0,
     bloodPressure: '120/80'
@@ -125,9 +128,9 @@ const Home = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage);
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage, 'nutrition:', nutritionPercentage);
       setForceRender(prev => prev + 1);
-    }, [waterIntake, percentage, steps, workoutPercentage])
+    }, [waterIntake, percentage, steps, workoutPercentage, nutritionPercentage])
   );
 
   // Calculate steps percentage (similar to water intake percentage)
@@ -145,7 +148,7 @@ const Home = ({ navigation }) => {
 
   // Calculate weighted overall score
   const overallScore = Math.round(
-    (healthMetrics.nutrition * weights.nutrition) +
+    (nutritionPercentage * weights.nutrition) +
     (workoutPercentage * weights.workout) +
     (percentage * weights.water) +
     (healthMetrics.mental * weights.mental) +
@@ -172,6 +175,12 @@ const Home = ({ navigation }) => {
       return;
     }
 
+    if (metric === 'nutrition') {
+      const nutritionValue = Math.min(100, Math.max(0, parseInt(value) || 0));
+      updateNutritionPercentage(nutritionValue);
+      return;
+    }
+
     let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
@@ -183,22 +192,49 @@ const Home = ({ navigation }) => {
       ...prev,
       [metric]: processedValue
     }));
-  }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage]);
+  }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage, updateNutritionPercentage]);
 
   const renderHeader = () => {
+    const firstName = user ? user.displayName?.split(' ')[0] || user.email?.split('@')[0] : 'Guest';
+    
+    // Determine greeting based on time of day
+    const hour = new Date().getHours();
+    let greeting = 'Good Morning';
+    
+    if (hour >= 12 && hour < 18) {
+      greeting = 'Good Afternoon';
+    } else if (hour >= 18) {
+      greeting = 'Good Evening';
+    }
+
+    // Get first letter of name for avatar placeholder
+    const firstLetter = firstName ? firstName.charAt(0).toUpperCase() : 'G';
+    
+    // Generate a consistent color based on user email or name
+    const colorSeed = user ? (user.email || user.uid || firstName) : 'guest';
+    const colors = ['#FF9F1C', '#2EC4B6', '#3A86FF', '#8338EC', '#FF006E', '#8AC926', '#FF595E'];
+    const colorIndex = [...colorSeed].reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    const avatarColor = colors[colorIndex];
+    
     return (
       <View style={styles.headerContainer}>
         <View style={styles.viewLeft}>
-          <Image
-            source={images.user1}
-            resizeMode='contain'
-            style={styles.userIcon}
-          />
+          {user?.photoURL ? (
+            <Image
+              source={{ uri: user.photoURL }}
+              resizeMode='cover'
+              style={styles.userIcon}
+            />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { backgroundColor: avatarColor }]}>
+              <Text style={styles.avatarText}>{firstLetter}</Text>
+            </View>
+          )}
           <View style={styles.viewNameContainer}>
-            <Text style={styles.greeeting}>Good Morning👋</Text>
+            <Text style={styles.greeeting}>{greeting}👋</Text>
             <Text style={[styles.title, {
               color: dark ? COLORS.white : COLORS.greyscale900
-            }]}>Ataberk Kizlier</Text>
+            }]}>{firstName}</Text>
           </View>
         </View>
         <View style={styles.viewRight}>
@@ -268,7 +304,7 @@ const Home = ({ navigation }) => {
           unit="%"
           color="#FF9F1C"
           dark={dark}
-          value={healthMetrics.nutrition}
+          value={nutritionPercentage}
           onUpdate={updateMetric}
           navigation={navigation}
         />
@@ -340,28 +376,30 @@ const Home = ({ navigation }) => {
     </View>
   );
 
-  const renderCategories = () => (
-    <View>
-      <SubHeaderItem
-        title="Categories"
-        navTitle="See all"
-        onPress={() => navigation.navigate("Categories")}
-      />
-      <FlatList
-        data={categories.slice(1, 9)}
-        keyExtractor={(_, index) => index.toString()}
-        numColumns={4}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.categoryItem}
-            onPress={() => navigation.navigate(item.screen)}>
-            <Image source={item.icon} style={styles.categoryIcon} />
-            <Text style={styles.categoryText}>{item.name}</Text>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
-  );
+  const renderCategories = () => {
+    const categoriesSlice = categories.slice(1, 9);
+    
+    return (
+      <View>
+        <SubHeaderItem
+          title="Categories"
+          navTitle="See all"
+          onPress={() => navigation.navigate("Categories")}
+        />
+        <View style={styles.categoriesContainer}>
+          {categoriesSlice.map((item, index) => (
+            <TouchableOpacity
+              key={index.toString()}
+              style={styles.categoryItem}
+              onPress={() => navigation.navigate(item.screen)}>
+              <Image source={item.icon} style={styles.categoryIcon} />
+              <Text style={styles.categoryText}>{item.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   const renderTopDoctors = () => {
     const [selectedCategories, setSelectedCategories] = useState(["1"]);
@@ -381,13 +419,14 @@ const Home = ({ navigation }) => {
           navTitle="See all"
           onPress={() => navigation.navigate("TopDoctors")}
         />
-        <FlatList
-          data={categories}
+        <ScrollView 
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
+          contentContainerStyle={styles.categoryFiltersContainer}
+        >
+          {categories.map(item => (
             <TouchableOpacity
+              key={item.id}
               style={[
                 styles.categoryFilter,
                 selectedCategories.includes(item.id) && styles.selectedCategoryFilter
@@ -400,21 +439,21 @@ const Home = ({ navigation }) => {
                 {item.name}
               </Text>
             </TouchableOpacity>
-          )}
-        />
-        <FlatList
-          data={recommendedDoctors}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
+          ))}
+        </ScrollView>
+        <View
+          style={[styles.doctorsList, {
+            backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite
+          }]}
+        >
+          {recommendedDoctors.map(item => (
             <HorizontalDoctorCard
+              key={item.id}
               {...item}
               onPress={() => navigation.navigate("DoctorDetails", { doctor: item })}
             />
-          )}
-          contentContainerStyle={[styles.doctorsList, {
-            backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite
-          }]}
-        />
+          ))}
+        </View>
       </View>
     );
   };
@@ -452,7 +491,7 @@ const styles = StyleSheet.create({
   userIcon: {
     width: 48,
     height: 48,
-    borderRadius: 32
+    borderRadius: 24,
   },
   viewLeft: {
     flexDirection: "row",
@@ -657,7 +696,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 8,
     backgroundColor: COLORS.secondaryWhite
-  }
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+  },
+  categoryFiltersContainer: {
+    paddingVertical: 8,
+  },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontFamily: 'bold',
+  },
 });
 
 export default Home;
