@@ -246,7 +246,7 @@ export const recommendedDoctors = [
         numReviews: "1.2k",
         hospital: "St. Mary's Hospital",
         isAvailable: true,
-        categoryId: "1",
+        categoryId: "2",
         speciality: "Nutritionist",
         patients: 1200,
         yearsExperience: 8,
@@ -256,7 +256,7 @@ export const recommendedDoctors = [
     {
         id: "2",
         name: "Dr. Emily Faint",
-        type: "Dietitian",
+        type: "Physical Therapist",
         image: images.doctor22,
         distance: "1.2 km",
         consultationFee: "$150.00",
@@ -264,12 +264,12 @@ export const recommendedDoctors = [
         numReviews: "1k",
         hospital: "Green Valley Clinic",
         isAvailable: false,
-        categoryId: "2",
-        // ADD MISSING FIELDS
-        patients: 1000, // Derived from numReviews "1k"
+        categoryId: "3",
+        speciality: "Physical Therapist",
+        patients: 1000,
         yearsExperience: 7,
         workingTime: "Mon-Fri: 9am-5pm",
-        description: "Dr. Emily Faint specializes in dietary planning and nutrition therapy.",
+        description: "Dr. Emily Faint specializes in physical therapy and workout coaching.",
     },
     {
         id: "3",
@@ -282,7 +282,12 @@ export const recommendedDoctors = [
         numReviews: "800",
         hospital: "City Hospital",
         isAvailable: true,
-        categoryId: "1"
+        categoryId: "2",
+        speciality: "Nutritionist",
+        yearsExperience: 6,
+        patients: 800,
+        workingTime: "Mon-Fri: 10am-6pm",
+        description: "Dr. Josephine Queen focuses on nutritional counseling and dietary management."
     },
     {
         id: "4",
@@ -295,12 +300,17 @@ export const recommendedDoctors = [
         numReviews: "900",
         hospital: "Children's Health Center",
         isAvailable: false,
-        categoryId: "1",
+        categoryId: "2",
+        speciality: "Pediatric Nutritionist",
+        yearsExperience: 9,
+        patients: 900,
+        workingTime: "Mon-Fri: 8am-4pm",
+        description: "Dr. Sarah Davis specializes in pediatric nutrition and childhood dietary needs."
     },
     {
         id: "5",
         name: "Dr. Vera Dwarkin",
-        type: "Gastroenterologist",
+        type: "Physical Therapist",
         image: images.doctor5,
         distance: "800 m",
         consultationFee: "$220.00",
@@ -309,6 +319,11 @@ export const recommendedDoctors = [
         hospital: "Downtown Medical Plaza",
         isAvailable: true,
         categoryId: "3",
+        speciality: "Physical Therapist",
+        yearsExperience: 10,
+        patients: 1100,
+        workingTime: "Mon-Sat: 9am-7pm",
+        description: "Dr. Vera Dwarkin is an experienced physical therapist specializing in sports injuries."
     },
     {
         id: "6",
@@ -321,7 +336,12 @@ export const recommendedDoctors = [
         numReviews: "1.5k",
         hospital: "Neurology Specialists Clinic",
         isAvailable: true,
-        categoryId: "1",
+        categoryId: "2",
+        speciality: "Nutritionist",
+        yearsExperience: 12,
+        patients: 1500,
+        workingTime: "Mon-Fri: 9am-5pm",
+        description: "Dr. Huang WenShin specializes in clinical nutrition and metabolic disorders."
     },
     {
         id: "7",
@@ -334,12 +354,17 @@ export const recommendedDoctors = [
         numReviews: "950",
         hospital: "Eye Care Center",
         isAvailable: false,
-        categoryId: "1",
+        categoryId: "2",
+        speciality: "Nutritionist",
+        yearsExperience: 8,
+        patients: 950,
+        workingTime: "Tue-Sat: 10am-6pm",
+        description: "Dr. Ana Federika Coleen focuses on nutrition for eye health and overall wellness."
     },
     {
         id: "8",
         name: "Dr. Andrew Hopkin",
-        type: "Rheumatologist",
+        type: "Psychiatrist",
         image: images.doctor8,
         distance: "1.8 km",
         consultationFee: "$230.00",
@@ -347,12 +372,17 @@ export const recommendedDoctors = [
         numReviews: "1.4k",
         hospital: "Health and Wellness Clinic",
         isAvailable: false,
-        categoryId: "4",
+        categoryId: "5",
+        speciality: "Psychiatrist",
+        yearsExperience: 15,
+        patients: 1400,
+        workingTime: "Mon-Fri: 7am-8pm",
+        description: "Dr. Andrew Hopkin is a certified psychiatrist specializing in mental health treatment."
     },
     {
         id: "9",
         name: "Dr. Maria Gonzalez",
-        type: "Pulmonologist",
+        type: "Therapist",
         image: images.doctor9,
         distance: "1.4 km",
         consultationFee: "$240.00",
@@ -360,7 +390,12 @@ export const recommendedDoctors = [
         numReviews: "1.2k",
         hospital: "Breath Easy Clinic",
         isAvailable: true,
-        categoryId: "3",
+        categoryId: "5",
+        speciality: "Therapist",
+        yearsExperience: 9,
+        patients: 1200,
+        workingTime: "Mon-Fri: 9am-6pm",
+        description: "Dr. Maria Gonzalez specializes in therapy with a focus on mental wellness."
     },
 ];
 

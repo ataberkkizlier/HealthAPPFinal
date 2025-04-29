@@ -424,21 +424,23 @@ const Home = ({ navigation }) => {
         return recommendedDoctors;
       }
       
-      // Map category IDs to specialties
-      const categorySpecialtyMap = {
-        "2": "Nutrition",
-        "3": "Physical Therapy",
-        "4": "General",
-        "5": "Psychiatry",
-        "6": "Sleep Medicine",
-        "7": "Sports Medicine",
-        "8": "Cardiology",
-        "9": "Specialist"
+      // Map UI category names to doctor type/speciality
+      const categoryTypeMap = {
+        "2": ["Nutritionist", "Dietitian"],
+        "3": ["Physical Therapist", "Workout Specialist", "Fitness Trainer"],
+        "4": ["Nephrologist", "General Practitioner"],
+        "5": ["Psychiatrist", "Therapist"],
+        "6": ["Sleep Specialist"],
+        "7": ["Sports Medicine", "Fitness Trainer"],
+        "8": ["Cardiologist"],
+        "9": ["Specialist"]
       };
       
-      const specialty = categorySpecialtyMap[selectedCategory];
+      const allowedTypes = categoryTypeMap[selectedCategory] || [];
+      
       return recommendedDoctors.filter(doctor => 
-        doctor.specialty === specialty || doctor.tags?.includes(specialty.toLowerCase())
+        allowedTypes.includes(doctor.type) ||
+        (doctor.speciality && allowedTypes.includes(doctor.speciality))
       );
     }, [selectedCategory]);
 

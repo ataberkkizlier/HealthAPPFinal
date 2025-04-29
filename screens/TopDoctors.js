@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { COLORS } from '../constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../components/Header';
@@ -7,22 +7,47 @@ import { ScrollView } from 'react-native-virtualized-view';
 import { categories, recommendedDoctors } from '../data';
 import { useTheme } from '../theme/ThemeProvider';
 import HorizontalDoctorCard from '../components/HorizontalDoctorCard';
-import { useNavigation } from '@react-navigation/native'; // Critical import
+import { useNavigation } from '@react-navigation/native';
 
 const TopDoctors = () => {
     const { dark, colors } = useTheme();
-    const [selectedCategories, setSelectedCategories] = useState(["0"]);
-    const navigation = useNavigation(); // Critical fix
+    const [selectedCategory, setSelectedCategory] = useState("0"); // Default to "All"
+    const navigation = useNavigation();
 
-    const filteredDoctors = recommendedDoctors.filter(doctor =>
-        selectedCategories.includes("0") ||
-        selectedCategories.includes(doctor.categoryId)
-    );
+    // Custom categories for filtering doctors
+    const doctorCategories = [
+        { id: "0", name: "All" },
+        { id: "1", name: "Nutrition" },
+        { id: "2", name: "Workout" },
+        { id: "3", name: "Water Intake" }
+    ];
+
+    // Filter doctors based on selected category
+    const filteredDoctors = React.useMemo(() => {
+        if (selectedCategory === "0") {
+            // If "All" is selected, show all doctors
+            return recommendedDoctors;
+        }
+        
+        // Map UI category names to doctor type/speciality
+        const categoryTypeMap = {
+            "1": ["Nutritionist", "Dietitian"],
+            "2": ["Physical Therapist", "Workout Specialist", "Fitness Trainer"],
+            "3": ["Nephrologist", "General Practitioner"]
+        };
+        
+        const allowedTypes = categoryTypeMap[selectedCategory] || [];
+        
+        return recommendedDoctors.filter(doctor => 
+            allowedTypes.includes(doctor.type) ||
+            (doctor.speciality && allowedTypes.includes(doctor.speciality))
+        );
+    }, [selectedCategory]);
 
     const renderCategoryItem = ({ item }) => (
         <TouchableOpacity
             style={{
-                backgroundColor: selectedCategories.includes(item.id) ? COLORS.primary : "transparent",
+                backgroundColor: selectedCategory === item.id ? COLORS.primary : "transparent",
                 padding: 10,
                 marginVertical: 5,
                 borderColor: COLORS.primary,
@@ -30,33 +55,21 @@ const TopDoctors = () => {
                 borderRadius: 24,
                 marginRight: 12,
             }}
-            onPress={() => toggleCategory(item.id)}>
+            onPress={() => setSelectedCategory(item.id)}>
             <Text style={{
-                color: selectedCategories.includes(item.id) ? COLORS.white : COLORS.primary
+                color: selectedCategory === item.id ? COLORS.white : COLORS.primary
             }}>{item.name}</Text>
         </TouchableOpacity>
     );
 
-    const toggleCategory = (categoryId) => {
-        const updatedCategories = [...selectedCategories];
-        const index = updatedCategories.indexOf(categoryId);
-
-        if (index === -1) {
-            updatedCategories.push(categoryId);
-        } else {
-            updatedCategories.splice(index, 1);
-        }
-        setSelectedCategories(updatedCategories);
-    };
-
     const handleDoctorPress = (doctor) => {
-        // Critical data normalization
+        // Data normalization
         const doctorData = {
             ...doctor,
             id: doctor.id || Date.now().toString(),
             type: doctor.type || "General Practitioner",
             hospital: doctor.hospital || "General Hospital",
-            image: doctor.image || images.doctor1,
+            image: doctor.image,
             patients: parseInt(doctor.numReviews?.replace('k', '000')) || 0,
             yearsExperience: parseInt(doctor.yearsExperience) || 5,
             rating: doctor.rating?.toString() || "4.5",
@@ -65,7 +78,7 @@ const TopDoctors = () => {
             description: doctor.description || `${doctor.name} is a ${doctor.type} at ${doctor.hospital}`
         };
 
-        // Critical navigation fix with timeout
+        // Navigation
         setTimeout(() => {
             navigation.navigate("DoctorDetails", {
                 doctor: doctorData
@@ -79,31 +92,39 @@ const TopDoctors = () => {
                 <Header title="Top Doctors" />
                 <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                     <FlatList
-                        data={categories}
+                        data={doctorCategories}
                         keyExtractor={item => item.id}
                         showsHorizontalScrollIndicator={false}
                         horizontal
                         renderItem={renderCategoryItem}
                     />
                     <View style={{ backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite, marginVertical: 16 }}>
-                        <FlatList
-                            data={filteredDoctors}
-                            keyExtractor={item => item.id}
-                            renderItem={({ item }) => (
-                                <HorizontalDoctorCard
-                                    name={item.name}
-                                    image={item.image}
-                                    distance={item.distance}
-                                    price={item.consultationFee}
-                                    consultationFee={item.consultationFee}
-                                    hospital={item.hospital}
-                                    rating={item.rating}
-                                    numReviews={item.numReviews}
-                                    isAvailable={item.isAvailable}
-                                    onPress={() => handleDoctorPress(item)}
-                                />
-                            )}
-                        />
+                        {filteredDoctors.length > 0 ? (
+                            <FlatList
+                                data={filteredDoctors}
+                                keyExtractor={item => item.id}
+                                renderItem={({ item }) => (
+                                    <HorizontalDoctorCard
+                                        name={item.name}
+                                        image={item.image}
+                                        distance={item.distance}
+                                        price={item.consultationFee}
+                                        consultationFee={item.consultationFee}
+                                        hospital={item.hospital}
+                                        rating={item.rating}
+                                        numReviews={item.numReviews}
+                                        isAvailable={item.isAvailable}
+                                        onPress={() => handleDoctorPress(item)}
+                                    />
+                                )}
+                            />
+                        ) : (
+                            <View style={styles.noResultsContainer}>
+                                <Text style={styles.noResultsText}>
+                                    No doctors found in this category
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </ScrollView>
             </View>
@@ -123,6 +144,16 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         marginVertical: 16,
+    },
+    noResultsContainer: {
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noResultsText: {
+        fontSize: 16,
+        color: COLORS.gray,
+        fontFamily: 'regular',
     },
 });
 
