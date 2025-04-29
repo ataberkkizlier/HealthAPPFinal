@@ -12,6 +12,7 @@ import { StepsProvider } from './context/StepsContext';
 import { WorkoutProvider } from './context/WorkoutContext';
 import { NutritionProvider } from './context/NutritionContext';
 import { auth } from './firebase/config';
+import fatSecretService from './services/FatSecretService';
 
 // Firebase config import
 import './firebase/config';
@@ -29,10 +30,19 @@ export default function App() {
   }, [fontsLoaded, appReady]);
 
   useEffect(() => {
-    setAppReady(true);
+    async function initializeApp() {
+      try {
+        // Initialize FatSecret API service
+        await fatSecretService.initialize();
+        console.log('FatSecret API service initialized');
+      } catch (error) {
+        console.error('Failed to initialize FatSecret service:', error);
+      } finally {
+        setAppReady(true);
+      }
+    }
     
-    // We don't need to test database here anymore, as it's handled by AuthContext
-    // when a user logs in
+    initializeApp();
   }, []);
 
   if (!fontsLoaded || !appReady) {

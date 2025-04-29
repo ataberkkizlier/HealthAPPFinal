@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { healthDataOperations } from '../firebase/healthData';
+import consumedFoodService from '../services/ConsumedFoodService';
 
 const NutritionContext = createContext();
 
@@ -12,7 +13,7 @@ export const NutritionProvider = ({ children }) => {
     const dailyGoal = 100; // 100% is the target
     const { user, userData } = useAuth();
 
-    // Target calories for 100% nutrition goal
+    // Target calories for 100% nutrition goal - can be adjusted based on user profile in the future
     const TARGET_CALORIES = 2000; // 2000 calories = 100% nutrition
 
     // Load saved nutrition data on app start or when user/userData changes
@@ -62,6 +63,20 @@ export const NutritionProvider = ({ children }) => {
                     console.log('No saved calories consumed found in AsyncStorage');
                     // Reset to 0 when switching users and no data exists
                     setCaloriesConsumed(0);
+                }
+                
+                // Also try to get today's totals from the ConsumedFoodService
+                try {
+                    const userId = user ? user.uid : null;
+                    const todaysTotals = await consumedFoodService.getTodaysTotals(userId);
+                    if (todaysTotals && todaysTotals.calories > 0) {
+                        // If we have data in ConsumedFoodService, prefer that
+                        console.log('Found nutrition data in ConsumedFoodService:', todaysTotals);
+                        updateCaloriesConsumed(todaysTotals.calories);
+                        // Nutrition percentage will be automatically updated by updateCaloriesConsumed
+                    }
+                } catch (error) {
+                    console.error('Error getting today\'s totals from ConsumedFoodService:', error);
                 }
             } catch (e) {
                 console.error('Error loading nutrition data:', e);
@@ -162,10 +177,19 @@ export const NutritionProvider = ({ children }) => {
         updateNutritionPercentage(newPercentage);
     };
 
-    const resetNutrition = () => {
+    const resetNutrition = async () => {
         setNutritionPercentage(0);
         setCaloriesConsumed(0);
         console.log('Nutrition data reset to 0');
+        
+        // Also reset consumed foods in ConsumedFoodService
+        try {
+            const userId = user ? user.uid : null;
+            await consumedFoodService.resetTodaysData(userId);
+            console.log('ConsumedFoodService data reset');
+        } catch (error) {
+            console.error('Error resetting ConsumedFoodService data:', error);
+        }
     };
 
     return (
