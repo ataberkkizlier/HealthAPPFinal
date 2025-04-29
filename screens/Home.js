@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Image } from 'react-native';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { COLORS, SIZES, icons, images } from '../constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-virtualized-view';
@@ -402,15 +402,45 @@ const Home = ({ navigation }) => {
   };
 
   const renderTopDoctors = () => {
-    const [selectedCategories, setSelectedCategories] = useState(["1"]);
+    const [selectedCategory, setSelectedCategory] = useState("1");
+    
+    // Health metrics categories to match the image
+    const doctorCategories = [
+      { id: "1", name: "All" },
+      { id: "2", name: "Nutrition" },
+      { id: "3", name: "Workout" },
+      { id: "4", name: "Water Intake" },
+      { id: "5", name: "Mental Health" },
+      { id: "6", name: "Sleep" },
+      { id: "7", name: "Steps" },
+      { id: "8", name: "Blood Pressure" },
+      { id: "9", name: "Others" }
+    ];
 
-    const toggleCategory = (categoryId) => {
-      setSelectedCategories(prev =>
-        prev.includes(categoryId)
-          ? prev.filter(id => id !== categoryId)
-          : [...prev, categoryId]
+    // Filter doctors based on selected category
+    const filteredDoctors = useMemo(() => {
+      if (selectedCategory === "1") {
+        // If "All" is selected, show all doctors
+        return recommendedDoctors;
+      }
+      
+      // Map category IDs to specialties
+      const categorySpecialtyMap = {
+        "2": "Nutrition",
+        "3": "Physical Therapy",
+        "4": "General",
+        "5": "Psychiatry",
+        "6": "Sleep Medicine",
+        "7": "Sports Medicine",
+        "8": "Cardiology",
+        "9": "Specialist"
+      };
+      
+      const specialty = categorySpecialtyMap[selectedCategory];
+      return recommendedDoctors.filter(doctor => 
+        doctor.specialty === specialty || doctor.tags?.includes(specialty.toLowerCase())
       );
-    };
+    }, [selectedCategory]);
 
     return (
       <View>
@@ -419,40 +449,49 @@ const Home = ({ navigation }) => {
           navTitle="See all"
           onPress={() => navigation.navigate("TopDoctors")}
         />
-        <ScrollView 
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryFiltersContainer}
-        >
-          {categories.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.categoryFilter,
-                selectedCategories.includes(item.id) && styles.selectedCategoryFilter
-              ]}
-              onPress={() => toggleCategory(item.id)}>
-              <Text style={[
-                styles.categoryFilterText,
-                selectedCategories.includes(item.id) && styles.selectedCategoryFilterText
-              ]}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.categoryFilterWrapper}>
+          <FlatList
+            horizontal
+            data={doctorCategories}
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({item}) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryFilter,
+                  selectedCategory === item.id && styles.selectedCategoryFilter
+                ]}
+                onPress={() => setSelectedCategory(item.id)}>
+                <Text style={[
+                  styles.categoryFilterText,
+                  selectedCategory === item.id && styles.selectedCategoryFilterText
+                ]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
         <View
           style={[styles.doctorsList, {
             backgroundColor: dark ? COLORS.dark1 : COLORS.secondaryWhite
           }]}
         >
-          {recommendedDoctors.map(item => (
-            <HorizontalDoctorCard
-              key={item.id}
-              {...item}
-              onPress={() => navigation.navigate("DoctorDetails", { doctor: item })}
-            />
-          ))}
+          {filteredDoctors.length > 0 ? (
+            filteredDoctors.map(item => (
+              <HorizontalDoctorCard
+                key={item.id}
+                {...item}
+                onPress={() => navigation.navigate("DoctorDetails", { doctor: item })}
+              />
+            ))
+          ) : (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsText}>
+                No doctors found in this category
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -674,11 +713,10 @@ const styles = StyleSheet.create({
   categoryFilter: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginVertical: 5,
+    margin: 4,
     borderColor: COLORS.primary,
     borderWidth: 1.3,
     borderRadius: 24,
-    marginRight: 12,
     backgroundColor: COLORS.secondaryWhite,
   },
   selectedCategoryFilter: {
@@ -702,8 +740,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
   },
-  categoryFiltersContainer: {
-    paddingVertical: 8,
+  categoryFilterWrapper: {
+    marginBottom: 8,
   },
   avatarPlaceholder: {
     width: 48,
@@ -716,6 +754,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 20,
     fontFamily: 'bold',
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'medium',
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
   },
 });
 
