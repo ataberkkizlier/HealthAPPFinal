@@ -9,6 +9,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { WaterIntakeProvider } from './context/WaterIntakeContext';
 import { AuthProvider } from './context/AuthContext';
 import { StepsProvider } from './context/StepsContext';
+import { WorkoutProvider } from './context/WorkoutContext';
 import { auth } from './firebase/config';
 
 // Firebase config import
@@ -41,11 +42,13 @@ export default function App() {
     <AuthProvider>
       <WaterIntakeProvider>
         <StepsProvider>
-          <ThemeProvider>
-            <SafeAreaProvider onLayout={onLayoutRootView}>
-              <AppNavigation />
-            </SafeAreaProvider>
-          </ThemeProvider>
+          <WorkoutProvider>
+            <ThemeProvider>
+              <SafeAreaProvider onLayout={onLayoutRootView}>
+                <AppNavigation />
+              </SafeAreaProvider>
+            </ThemeProvider>
+          </WorkoutProvider>
         </StepsProvider>
       </WaterIntakeProvider>
     </AuthProvider>

@@ -8,12 +8,15 @@ const bag = require("../assets/icons/bag.png");
 const bellOutline = require("../assets/icons/bell-outline.png");
 const bell = require("../assets/icons/bell.png");
 const waterSon = require("../assets/icons/waterSon.png");
+const waterIntake = require("../assets/icons/waterSon.png");
+const water = require("../assets/icons/waterSon.png");
 const bookmarkOutline = require("../assets/icons/bookmark-outline.png");
 const bookmark = require("../assets/icons/bookmark.png");
 const calendar = require("../assets/icons/calendar.png");
 const calendar2 = require("../assets/icons/calendar2.png");
 const calendar3 = require("../assets/icons/calendar3.png");
 const workoutSon = require("../assets/icons/workoutSon.png");
+const workout = require("../assets/icons/workoutSon.png");
 const call = require("../assets/icons/call.png");
 const categoryOutline = require("../assets/icons/category-outline.png");
 const category = require("../assets/icons/category.png");
@@ -243,10 +246,11 @@ const eye2 = require("../assets/icons/eye2.png");
 const friends = require("../assets/icons/friends.png");
 const bloodPressure = require("../assets/icons/bloodPressure.png");
 const mentalWellSon = require("../assets/icons/mentalWellSon.png");
+const mentalHealth = require("../assets/icons/mentalWellSon.png");
 const joint2 = require("../assets/icons/joint2.png");
 const more2 = require("../assets/icons/more2.png");
 const nutrition1 = require("../assets/icons/nutrition.png");
-const nutrition2 = require("../assets/icons/nutrition2.png");
+const nutrition = require("../assets/icons/nutrition.png");
 const tooth = require("../assets/icons/tooth.png");
 const tooth2 = require("../assets/icons/tooth2.png");
 const more3 = require("../assets/icons/more3.png");
@@ -273,6 +277,9 @@ export default {
     bag,
     bellOutline,
     bell,
+    waterSon,
+    waterIntake,
+    water,
     bookmarkOutline,
     bookmark,
     calendar,
@@ -460,6 +467,7 @@ export default {
     time,
     clockTime,
     workoutSon,
+    workout,
     figma,
     heart2,
     heart2Outline,
@@ -512,7 +520,7 @@ export default {
     joint2,
     more2,
     nutrition1,
-    nutrition2,
+    nutrition,
     tooth,
     tooth2,
     more3,
@@ -529,4 +537,5 @@ export default {
     next,
     next2,
     mentalWellSon,
+    mentalHealth,
 }

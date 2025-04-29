@@ -10,6 +10,7 @@ import HorizontalDoctorCard from '../components/HorizontalDoctorCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useWaterIntake } from '../context/WaterIntakeContext';
 import { useSteps } from '../context/StepsContext';
+import { useWorkout } from '../context/WorkoutContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 const MetricCard = React.memo(({
@@ -20,7 +21,8 @@ const MetricCard = React.memo(({
   color,
   dark,
   value,
-  onUpdate
+  onUpdate,
+  navigation
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
@@ -42,11 +44,32 @@ const MetricCard = React.memo(({
     setLocalValue(text);
   };
 
+  // Handle metric card press - navigate to corresponding screen
+  const handlePress = () => {
+    // Map metric to screen names
+    const screenMapping = {
+      'water': 'WaterIntake',
+      'workout': 'Workout',
+      'steps': 'Steps',
+      'nutrition': 'Nutrition',
+      'mental': 'MentalHealth',
+      'sleep': 'Sleep'
+    };
+
+    if (screenMapping[metric] && navigation) {
+      navigation.navigate(screenMapping[metric]);
+    }
+  };
+
   return (
-    <View style={[styles.metricCard, {
-      backgroundColor: dark ? COLORS.dark2 : COLORS.white,
-      shadowColor: dark ? COLORS.white : COLORS.gray
-    }]}>
+    <TouchableOpacity 
+      style={[styles.metricCard, {
+        backgroundColor: dark ? COLORS.dark2 : COLORS.white,
+        shadowColor: dark ? COLORS.white : COLORS.gray
+      }]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
       <View style={styles.metricHeader}>
         <Image
           source={icon}
@@ -83,7 +106,7 @@ const MetricCard = React.memo(({
           }]} />
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -91,9 +114,9 @@ const Home = ({ navigation }) => {
   const { dark, colors } = useTheme();
   const { waterIntake, percentage, dailyGoal, updateWaterIntake } = useWaterIntake();
   const { steps, dailyGoal: stepsDailyGoal, updateSteps } = useSteps();
+  const { workoutPercentage, updateWorkoutPercentage } = useWorkout();
   const [healthMetrics, setHealthMetrics] = useState({
     nutrition: 0,
-    workout: 0,
     mental: 0,
     sleep: 0,
     bloodPressure: '120/80'
@@ -102,9 +125,9 @@ const Home = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps);
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage);
       setForceRender(prev => prev + 1);
-    }, [waterIntake, percentage, steps])
+    }, [waterIntake, percentage, steps, workoutPercentage])
   );
 
   // Calculate steps percentage (similar to water intake percentage)
@@ -123,7 +146,7 @@ const Home = ({ navigation }) => {
   // Calculate weighted overall score
   const overallScore = Math.round(
     (healthMetrics.nutrition * weights.nutrition) +
-    (healthMetrics.workout * weights.workout) +
+    (workoutPercentage * weights.workout) +
     (percentage * weights.water) +
     (healthMetrics.mental * weights.mental) +
     (healthMetrics.sleep * weights.sleep) +
@@ -143,6 +166,12 @@ const Home = ({ navigation }) => {
       return;
     }
 
+    if (metric === 'workout') {
+      const workoutValue = Math.min(100, Math.max(0, parseInt(value) || 0));
+      updateWorkoutPercentage(workoutValue);
+      return;
+    }
+
     let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
@@ -154,7 +183,7 @@ const Home = ({ navigation }) => {
       ...prev,
       [metric]: processedValue
     }));
-  }, [dailyGoal, updateWaterIntake, updateSteps]);
+  }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage]);
 
   const renderHeader = () => {
     return (
@@ -241,6 +270,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={healthMetrics.nutrition}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.workout}
@@ -249,8 +279,9 @@ const Home = ({ navigation }) => {
           unit="%"
           color="#2EC4B6"
           dark={dark}
-          value={healthMetrics.workout}
+          value={workoutPercentage}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.water}
@@ -261,6 +292,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={percentage}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.mentalHealth}
@@ -271,6 +303,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={healthMetrics.mental}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.sleep}
@@ -281,6 +314,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={healthMetrics.sleep}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.steps}
@@ -290,6 +324,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={steps}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
         <MetricCard
           icon={icons.bloodPressure}
@@ -299,6 +334,7 @@ const Home = ({ navigation }) => {
           dark={dark}
           value={healthMetrics.bloodPressure}
           onUpdate={updateMetric}
+          navigation={navigation}
         />
       </View>
     </View>
