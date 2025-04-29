@@ -13,10 +13,12 @@ export const WaterIntakeProvider = ({ children }) => {
 
     // Load saved intake on app start or when user/userData changes
     useEffect(() => {
+        console.log('WaterIntakeContext: User or userData changed');
+        
         // If we have user-specific data from Firebase, use that
-        if (userData && userData.waterIntake) {
+        if (userData && userData.waterIntake !== undefined) {
+            console.log('Found user-specific water intake in userData:', userData.waterIntake);
             setWaterIntake(userData.waterIntake);
-            console.log('Loaded user-specific water intake from Firebase:', userData.waterIntake);
             return;
         }
 
@@ -25,16 +27,20 @@ export const WaterIntakeProvider = ({ children }) => {
             try {
                 // Use user UID as part of the storage key if available
                 const storageKey = user ? `@waterIntake_${user.uid}` : '@waterIntake_guest';
-                const saved = await AsyncStorage.getItem(storageKey);
-                console.log('Loaded from AsyncStorage with key:', storageKey, 'value:', saved);
+                console.log('Attempting to load from AsyncStorage with key:', storageKey);
                 
+                const saved = await AsyncStorage.getItem(storageKey);
                 if (saved) {
                     const parsedIntake = parseInt(saved);
+                    console.log('Loaded water intake from AsyncStorage:', parsedIntake);
                     setWaterIntake(parsedIntake);
-                    console.log('Set waterIntake after load:', parsedIntake);
+                } else {
+                    console.log('No saved water intake found in AsyncStorage');
+                    // Reset to 0 when switching users and no data exists
+                    setWaterIntake(0);
                 }
             } catch (e) {
-                console.log('Error loading water intake:', e);
+                console.error('Error loading water intake:', e);
             }
         };
         loadIntake();
@@ -44,36 +50,66 @@ export const WaterIntakeProvider = ({ children }) => {
     useEffect(() => {
         const saveIntake = async () => {
             try {
-                // Only save to AsyncStorage if there's a change in value
-                if (waterIntake === 0 && !user) return;
+                // Skip saving if water intake is 0 and user is not logged in
+                if (waterIntake === 0 && !user) {
+                    console.log('Skipping save for guest with 0 intake');
+                    return;
+                }
                 
                 // Use user UID as part of the storage key if available
                 const storageKey = user ? `@waterIntake_${user.uid}` : '@waterIntake_guest';
                 await AsyncStorage.setItem(storageKey, waterIntake.toString());
-                console.log('Saved to AsyncStorage with key:', storageKey, 'value:', waterIntake);
+                console.log('Saved to AsyncStorage:', storageKey, '=', waterIntake);
                 
                 // If user is logged in, also save to Firebase
                 if (user) {
                     try {
-                        await healthDataOperations.updateHealthData(user.uid, {
-                            waterIntake: waterIntake
+                        console.log('Saving water intake to Firebase for user:', user.uid, 'Amount:', waterIntake);
+                        
+                        // Use updateHealthData to only update the waterIntake field without affecting other health data
+                        const result = await healthDataOperations.updateHealthData(user.uid, {
+                            waterIntake: waterIntake,
+                            lastUpdated: Date.now()
                         });
-                        console.log('Saved water intake to Firebase for user:', user.uid);
+                        
+                        if (result.success) {
+                            console.log('Successfully saved water intake to Firebase');
+                        } else {
+                            console.error('Failed to save water intake to Firebase:', result.error);
+                        }
                     } catch (error) {
                         console.error('Error saving to Firebase:', error);
                     }
                 }
             } catch (e) {
-                console.log('Error saving water intake:', e);
+                console.error('Error saving water intake:', e);
             }
         };
-        saveIntake();
+        
+        // Only save if there's a real change to save
+        if (waterIntake !== undefined) {
+            saveIntake();
+        }
     }, [waterIntake, user]);
 
     const updateWaterIntake = (newAmount) => {
+        // Ensure newAmount is a valid number
+        if (isNaN(newAmount) || newAmount < 0) {
+            console.warn('Invalid water intake amount:', newAmount);
+            return;
+        }
+        
+        // Cap the amount at the daily goal
         const cappedAmount = Math.min(newAmount, dailyGoal);
+        
+        console.log('Updating water intake:', 
+            'User:', user?.uid || 'Guest', 
+            'Current:', waterIntake, 
+            'New:', cappedAmount, 
+            'Percentage:', Math.round((cappedAmount / dailyGoal) * 100)
+        );
+        
         setWaterIntake(cappedAmount);
-        console.log('Updated waterIntake:', cappedAmount, 'Percentage:', Math.round((cappedAmount / dailyGoal) * 100));
     };
 
     const percentage = Math.round((waterIntake / dailyGoal) * 100);

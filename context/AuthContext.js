@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
                 // Check each user's water intake
                 Object.keys(users).forEach(userId => {
                     const userData = users[userId];
-                    if (userData.healthData && userData.healthData.waterIntake) {
+                    if (userData.healthData && userData.healthData.waterIntake !== undefined) {
                         console.log(`User ${userId} water intake:`, userData.healthData.waterIntake);
                     } else {
                         console.log(`User ${userId} has no water intake data`);
@@ -47,6 +47,54 @@ export const AuthProvider = ({ children }) => {
             console.log("============================================");
         } catch (error) {
             console.error("Debug error:", error);
+        }
+    }
+
+    // New debug function specifically for water intake
+    const debugWaterIntake = async () => {
+        try {
+            console.log("============ DEBUGGING WATER INTAKE ============");
+            
+            // Get all users from database
+            const usersRef = ref(database, 'users');
+            const snapshot = await get(usersRef);
+            
+            if (snapshot.exists()) {
+                const users = snapshot.val();
+                console.log("Found users:", Object.keys(users).length);
+                
+                // Create a table of user IDs and their water intake values
+                console.log("USER ID | EMAIL | WATER INTAKE");
+                console.log("--------|-------|-------------");
+                
+                // For each user, check their water intake
+                Object.keys(users).forEach(userId => {
+                    const userData = users[userId];
+                    const email = userData.email || "unknown";
+                    const waterIntake = userData.healthData && userData.healthData.waterIntake !== undefined 
+                        ? userData.healthData.waterIntake 
+                        : "no data";
+                    
+                    console.log(`${userId.substring(0, 8)}... | ${email} | ${waterIntake}`);
+                });
+                
+                // Log the current user's water intake
+                if (user) {
+                    console.log("\nCurrent user:", user.uid);
+                    console.log("Current user email:", user.email);
+                    console.log("Current user's water intake in context:", userData?.waterIntake || "not set");
+                } else {
+                    console.log("\nNo user is currently logged in");
+                }
+            } else {
+                console.log("No users found in database");
+            }
+            console.log("=============================================");
+            
+            return true;
+        } catch (error) {
+            console.error("Debug water intake error:", error);
+            return false;
         }
     }
 
@@ -125,12 +173,20 @@ export const AuthProvider = ({ children }) => {
         console.log("SAVE HEALTH DATA: Saving data for user:", user.uid, user.email, data);
         
         try {
-            const result = await healthDataOperations.saveHealthData(user.uid, data)
+            // Always include the user's email in saved data for easier debugging
+            const enhancedData = {
+                ...data,
+                email: user.email,     // Store email for easier debugging
+                lastUpdated: Date.now()
+            };
+            
+            const result = await healthDataOperations.saveHealthData(user.uid, enhancedData)
             if (result.success) {
                 // Update local state with new data
                 setUserData({
                     ...userData,
                     ...data,
+                    email: user.email,
                     lastUpdated: Date.now()
                 })
                 
@@ -284,7 +340,9 @@ export const AuthProvider = ({ children }) => {
         mentalHealth,
         sleep,
         steps,
-        bloodPressure
+        bloodPressure,
+        debugUserData,
+        debugWaterIntake
     }
 
     return (

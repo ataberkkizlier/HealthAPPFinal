@@ -2,13 +2,33 @@ import React, { useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useWaterIntake } from '../context/WaterIntakeContext';
 import { useAuth } from '../context/AuthContext';
-import { ref, set } from 'firebase/database';
+import { ref, set, update } from 'firebase/database';
 import { database } from '../firebase/config';
 
 export default function WaterIntake({ navigation }) {
   const [intake, setIntake] = React.useState('');
   const { updateWaterIntake, waterIntake, dailyGoal } = useWaterIntake();
-  const { user, userData, saveHealthData } = useAuth();
+  const { user, userData, saveHealthData, debugWaterIntake } = useAuth();
+
+  // Debug function to help diagnose issues with water intake data
+  const debugWaterIntakeData = async () => {
+    if (!user) {
+      Alert.alert('Not Logged In', 'You need to be logged in to debug data');
+      return;
+    }
+
+    try {
+      const result = await debugWaterIntake();
+      if (result) {
+        Alert.alert('Debug Info', 'Check console logs for water intake data across users');
+      } else {
+        Alert.alert('Debug Failed', 'Failed to retrieve debug information');
+      }
+    } catch (error) {
+      console.error('Error in debug function:', error);
+      Alert.alert('Debug Error', error.message || 'An unknown error occurred');
+    }
+  };
 
   // Reset function to clear water intake and database for testing
   const resetWaterIntake = async () => {
@@ -32,9 +52,9 @@ export default function WaterIntake({ navigation }) {
               // Reset the UI state
               updateWaterIntake(0);
               
-              // Reset the database directly for testing
+              // Use update() instead of set() to only update waterIntake field
               const healthRef = ref(database, `users/${user.uid}/healthData`);
-              await set(healthRef, {
+              await update(healthRef, {
                 waterIntake: 0,
                 lastUpdated: Date.now()
               });
@@ -137,9 +157,15 @@ export default function WaterIntake({ navigation }) {
         </TouchableOpacity>
         
         {user && (
-          <TouchableOpacity style={styles.resetButton} onPress={resetWaterIntake}>
-            <Text style={styles.resetButtonText}>Reset Intake</Text>
-          </TouchableOpacity>
+          <View style={{flexDirection: 'row'}}>
+            <TouchableOpacity style={styles.resetButton} onPress={resetWaterIntake}>
+              <Text style={styles.resetButtonText}>Reset</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.debugButton} onPress={debugWaterIntakeData}>
+              <Text style={styles.debugButtonText}>Debug</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </View>
@@ -239,7 +265,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    flex: 1,
     marginLeft: 10,
     alignItems: 'center',
   },
@@ -248,4 +273,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  debugButton: {
+    backgroundColor: '#5856d6',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginLeft: 10,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  }
 });
