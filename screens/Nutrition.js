@@ -665,42 +665,43 @@ const Nutrition = () => {
         </View>
       </View>
 
-      {/* Main Content - Use a FlatList with sections instead of ScrollView */}
-      <View style={styles.mainContent}>
-        {/* Search Results Section */}
-        {searchResults.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Search Results:</Text>
-            <FlatList
-              data={searchResults}
-              keyExtractor={(item, index) => `search-${item.food_id || index}`}
-              renderItem={renderFoodItem}
-              style={styles.foodList}
-              nestedScrollEnabled={true}
-              scrollEnabled={false} // Disable scrolling for this list
-            />
-          </View>
-        )}
-        
-        {/* Today's Food Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Today's Food:</Text>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
-          ) : todaysFoods.length > 0 ? (
-            <FlatList
-              data={todaysFoods}
-              keyExtractor={(item, index) => `consumed-${index}`}
-              renderItem={renderConsumedFoodItem}
-              style={styles.consumedFoodList}
-              nestedScrollEnabled={true}
-              scrollEnabled={false} // Disable scrolling for this list
-            />
-          ) : (
-            <Text style={styles.emptyListText}>No foods logged today. Search and add some!</Text>
+      {/* Main Content */}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.mainContent}>
+          {/* Search Results Section */}
+          {searchResults.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Search Results:</Text>
+              {/* Render items directly without FlatList */}
+              <View style={styles.foodList}>
+                {searchResults.map((item, index) => (
+                  <View key={`search-${item.food_id || index}`}>
+                    {renderFoodItem({item})}
+                  </View>
+                ))}
+              </View>
+            </View>
           )}
+          
+          {/* Today's Food Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Today's Food:</Text>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
+            ) : todaysFoods.length > 0 ? (
+              <View style={styles.consumedFoodList}>
+                {todaysFoods.map((item, index) => (
+                  <View key={`consumed-${index}`}>
+                    {renderConsumedFoodItem({item, index})}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyListText}>No foods logged today. Search and add some!</Text>
+            )}
+          </View>
         </View>
-      </View>
+      </ScrollView>
       
       {/* Food Details Modal */}
       {renderFoodDetailsModal()}
@@ -723,6 +724,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     backgroundColor: '#f0f8ff',
+    paddingBottom: 20,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     paddingBottom: 20,
   },
   sectionContainer: {

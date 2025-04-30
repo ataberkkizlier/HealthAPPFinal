@@ -14,7 +14,7 @@ export const NutritionProvider = ({ children }) => {
     const { user, userData } = useAuth();
 
     // Target calories for 100% nutrition goal - can be adjusted based on user profile in the future
-    const TARGET_CALORIES = 2000; // 2000 calories = 100% nutrition
+    const TARGET_CALORIES = 2500; // 2000 calories = 100% nutrition
 
     // Load saved nutrition data on app start or when user/userData changes
     useEffect(() => {
