@@ -7,6 +7,7 @@ import {
     Alert,
     TouchableOpacity,
     ActivityIndicator,
+    Linking,
 } from 'react-native'
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -23,6 +24,9 @@ import { useTheme } from '../theme/ThemeProvider'
 import { registerWithEmailAndPassword } from '../firebase/auth'
 import { auth } from '../firebase/config'
 import testFirebase from '../firebase/firebaseTest'
+import testDatabase from '../firebase/databaseTest'
+import runSimpleDatabaseTest from '../firebase/simpleDatabaseTest'
+import getDatabaseRulesHelp from '../firebase/databaseRules'
 
 const isTestMode = false
 
@@ -154,6 +158,65 @@ const Signup = ({ navigation }) => {
             );
         }
     }
+    
+    // Test Firebase Database
+    const testDatabaseConnection = async () => {
+        try {
+            console.log("Testing Firebase Database connection...");
+            const result = await testDatabase();
+            console.log("Database test result:", result);
+
+            Alert.alert(
+                result.success ? "Database Test Success" : "Database Test Failed",
+                result.message
+            );
+        } catch (error) {
+            console.error("Database test error:", error);
+            Alert.alert(
+                "Database Test Error",
+                "Error testing database: " + error.message
+            );
+        }
+    }
+
+    // Test Firebase Database with simple test
+    const runSimpleDbTest = async () => {
+        try {
+            console.log("Running simple database test...");
+            const result = await runSimpleDatabaseTest();
+            console.log("Simple database test result:", result);
+
+            Alert.alert(
+                result.success ? "Database Test Success" : "Database Test Failed",
+                result.message
+            );
+        } catch (error) {
+            console.error("Simple database test error:", error);
+            Alert.alert(
+                "Database Test Error",
+                "Error in simple database test: " + error.message
+            );
+        }
+    }
+
+    // Show database rules help
+    const showDatabaseRulesHelp = () => {
+        const helpInfo = getDatabaseRulesHelp();
+        Alert.alert(
+            "Database Rules Help",
+            helpInfo.helpText + "\n\nDo you want to open Firebase Console?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Open Console",
+                    onPress: () => Linking.openURL(helpInfo.consoleUrl)
+                }
+            ]
+        );
+    }
 
     return (
         <SafeAreaView
@@ -250,10 +313,43 @@ const Signup = ({ navigation }) => {
                             <ActivityIndicator
                                 size="small"
                                 color={COLORS.white}
-                                style={{ marginLeft: 10 }}
+                                style={styles.spinner}
                             />
                         )}
                     </Button>
+                    
+                    {/* For testing purposes */}
+                    <View style={{marginTop: 10, flexDirection: 'column'}}>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10}}>
+                            <Button 
+                                title="Test Firebase Auth" 
+                                filled 
+                                onPress={testFirebaseConnection}
+                                style={[styles.button, {flex: 1, marginRight: 5}]}
+                            />
+                            <Button 
+                                title="Test Database" 
+                                filled 
+                                onPress={testDatabaseConnection}
+                                style={[styles.button, {flex: 1, marginLeft: 5}]}
+                            />
+                        </View>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10}}>
+                            <Button 
+                                title="Simple Database Test" 
+                                filled 
+                                onPress={runSimpleDbTest}
+                                style={[styles.button, {flex: 1, marginRight: 5}]}
+                            />
+                            <Button 
+                                title="Database Rules Help" 
+                                filled 
+                                onPress={showDatabaseRulesHelp}
+                                style={[styles.button, {flex: 1, marginLeft: 5}]}
+                            />
+                        </View>
+                    </View>
+
                     <Button
                         title=" Privacy Policy"
                         onPress={testFirebaseConnection}
@@ -393,6 +489,9 @@ const styles = StyleSheet.create({
         marginVertical: 6,
         width: SIZES.width - 32,
         borderRadius: 30,
+    },
+    spinner: {
+        marginLeft: 10,
     },
 })
 

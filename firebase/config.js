@@ -10,11 +10,12 @@ import { getDatabase } from 'firebase/database';
 const firebaseConfig = {
     apiKey: "AIzaSyDFjrJjBBtov-PDRg1u0DGcmzLjMdazK6k",
     authDomain: "healthapp-ba6b2.firebaseapp.com",
+    databaseURL: "https://healthapp-ba6b2-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "healthapp-ba6b2",
-    storageBucket: "healthapp-ba6b2.firebasestorage.app",
+    storageBucket: "healthapp-ba6b2.appspot.com",
     messagingSenderId: "653543625303",
     appId: "1:653543625303:web:60fc809f867eaf7cfac912"
-  };
+};
 
 // Check if Firebase is already initialized
 let app;
