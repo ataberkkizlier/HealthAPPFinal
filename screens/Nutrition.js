@@ -10,7 +10,8 @@ import {
   Alert,
   ScrollView,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -18,6 +19,8 @@ import { useNutrition } from '../context/NutritionContext';
 import { useAuth } from '../context/AuthContext';
 import ProgressBar from '../components/ProgressBar';
 import fatSecretService from '../services/FatSecretService';
+import fatSecretDiagnostic from '../services/FatSecretDiagnostic';
+import fallbackFoodService from '../services/FallbackFoodService';
 import consumedFoodService from '../services/ConsumedFoodService';
 import { COLORS, FONTS } from '../constants';
 
@@ -82,6 +85,7 @@ const Nutrition = () => {
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
   const [servingSizes, setServingSizes] = useState([]);
   const [selectedServingIndex, setSelectedServingIndex] = useState(0);
+  const [isUsingFallbackApi, setIsUsingFallbackApi] = useState(false);
 
   // Initialize FatSecret API service
   useEffect(() => {
@@ -92,27 +96,63 @@ const Nutrition = () => {
         // Test API connectivity
         const apiConnected = await fatSecretService.testConnection();
         if (!apiConnected) {
-          console.log('API connectivity test failed - will use local database as fallback');
+          console.log('FatSecret API connectivity test failed - will try fallback API');
           
-          // Only show a non-blocking notification
-          setTimeout(() => {
-            Alert.alert(
-              "Nutrition Database Notice",
-              `Using offline food database. The app couldn't connect to the online nutrition database. This may be due to connection issues or API limitations. Your device IP is ${fatSecretService.ipAddress}.`,
-              [{ text: "OK" }]
-            );
-          }, 1000);
+          // Try the fallback API
+          const fallbackConnected = await fallbackFoodService.testConnection();
+          if (fallbackConnected) {
+            console.log('Fallback API connectivity test passed - will use fallback API');
+            setIsUsingFallbackApi(true);
+            
+            // Show a notification
+            setTimeout(() => {
+              Alert.alert(
+                "Alternative Nutrition Database",
+                `Using alternative nutrition database because the main database couldn't be accessed. This may be due to connection issues or API limitations.`,
+                [{ text: "OK" }]
+              );
+            }, 1000);
+          } else {
+            console.log('Both APIs failed - will use local database as final fallback');
+            
+            // Only show a non-blocking notification
+            setTimeout(() => {
+              Alert.alert(
+                "Nutrition Database Notice",
+                `Using offline food database. The app couldn't connect to any online nutrition database. This may be due to connection issues or API limitations. Your device IP is ${fatSecretService.ipAddress}.`,
+                [{ text: "OK" }]
+              );
+            }, 1000);
+          }
         } else {
-          console.log('API connectivity test passed - online database available');
+          console.log('FatSecret API connectivity test passed - online database available');
         }
         
         loadTodaysFoods();
       } catch (error) {
         console.error('Error initializing FatSecret service:', error);
-        Alert.alert(
-          "API Error",
-          "Failed to connect to nutrition database. Please try again later."
-        );
+        // Try the fallback API as a backup
+        try {
+          const fallbackConnected = await fallbackFoodService.testConnection();
+          if (fallbackConnected) {
+            console.log('Fallback API connectivity test passed - will use fallback API after primary API error');
+            setIsUsingFallbackApi(true);
+            
+            Alert.alert(
+              "Using Alternative Database",
+              "The primary nutrition database couldn't be accessed. Using alternative nutrition data source instead.",
+              [{ text: "OK" }]
+            );
+          } else {
+            Alert.alert(
+              "API Error",
+              "Failed to connect to any nutrition database. Using offline data.",
+              [{ text: "OK" }]
+            );
+          }
+        } catch (fallbackError) {
+          console.error('Error with fallback API:', fallbackError);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -148,7 +188,7 @@ const Nutrition = () => {
     }
   };
 
-  // Search for foods - hybrid approach with API primary and local fallback
+  // Enhanced search for foods with multiple API options
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
@@ -157,75 +197,90 @@ const Nutrition = () => {
       setSearchResults([]); // Clear previous results
       console.log('Searching for foods with query:', searchQuery);
       
-      // Try to search using the FatSecret API first
       let apiResults = [];
       let apiError = null;
       
-      try {
-        console.log('Attempting API search...');
-        apiResults = await fatSecretService.searchFoods(searchQuery);
-        console.log(`API search returned ${apiResults.length} results`);
-        
-        // Log the entire first result to understand structure
-        if (apiResults && apiResults.length > 0) {
-          console.log('Sample result structure:', JSON.stringify(apiResults[0]));
+      // Try primary API first unless we already know it's not working
+      if (!isUsingFallbackApi) {
+        try {
+          console.log('Attempting FatSecret API search...');
+          apiResults = await fatSecretService.searchFoods(searchQuery);
+          console.log(`FatSecret API search returned ${apiResults.length} results`);
           
-          // Format the API results to ensure consistent structure
-          const formattedApiResults = apiResults.map(item => ({
-            ...item,
-            // Ensure these properties exist for consistent rendering
-            food_id: String(item.food_id), // Convert to string for consistency
-            food_name: item.food_name,
-            food_description: item.food_description
-          }));
+          // Format and use the results if available
+          if (apiResults && apiResults.length > 0) {
+            const formattedApiResults = apiResults.map(item => ({
+              ...item,
+              food_id: String(item.food_id), 
+              food_name: item.food_name,
+              food_description: item.food_description,
+              api_source: 'fatsecret'
+            }));
+            
+            setSearchResults(formattedApiResults);
+            setIsSearching(false);
+            return;
+          }
+        } catch (error) {
+          apiError = error;
+          console.error('FatSecret API search failed with error:', error.message);
           
-          // API search succeeded and returned results
-          setSearchResults(formattedApiResults);
-          console.log('Using API search results');
-          setIsSearching(false);
-          return;
-        }
-      } catch (error) {
-        apiError = error;
-        console.error('API search failed with error:', error.message);
-        
-        // Show a more detailed alert for troubleshooting
-        if (error.message.includes('401')) {
-          Alert.alert(
-            "Authentication Error",
-            `The nutrition API returned an authentication error. Your IP address (${fatSecretService.ipAddress}) may need to be whitelisted in the FatSecret developer console.`,
-            [{ text: "OK" }]
-          );
-        } else if (error.message.includes('403')) {
-          Alert.alert(
-            "Permission Error",
-            "The app doesn't have permission to access the nutrition database. This may be due to subscription limits or API key restrictions.",
-            [{ text: "OK" }]
-          );
-        } else {
-          // For other errors, we'll continue with local fallback but log details
-          console.error('Will fall back to local database');
+          // Only show detailed errors when this is unexpected
+          if (!isUsingFallbackApi) {
+            handleFatSecretApiError(error);
+          }
         }
       }
       
-      // If API search failed or returned no results, use local food database
-      console.log('Falling back to local food database');
+      // Try fallback API if primary failed or returned no results
+      try {
+        console.log('Attempting fallback API search...');
+        const fallbackResults = await fallbackFoodService.searchFoods(searchQuery);
+        console.log(`Fallback API search returned ${fallbackResults.length} results`);
+        
+        if (fallbackResults && fallbackResults.length > 0) {
+          const formattedFallbackResults = fallbackResults.map(item => ({
+            ...item,
+            api_source: 'fallback'
+          }));
+          
+          // If we're reaching here unexpectedly, show notification
+          if (!isUsingFallbackApi && !apiError) {
+            setIsUsingFallbackApi(true);
+            Alert.alert(
+              "Using Alternative Database",
+              "The app is using an alternative nutrition database because the primary database returned no results.",
+              [{ text: "Continue" }]
+            );
+          }
+          
+          setSearchResults(formattedFallbackResults);
+          setIsSearching(false);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback API search failed with error:', fallbackError.message);
+        // Continue to local database search
+      }
       
-      // Improve local search with better term matching
+      // If both APIs failed, use local food database as last resort
+      console.log('Using local food database as last resort');
+      
+      // Use improved local search
       const searchTerms = searchQuery.toLowerCase().split(' ');
       
       const filteredLocalFoods = foods.filter(food => {
         const foodName = food.name.toLowerCase();
-        // Check if any search term is contained in the food name
         return searchTerms.some(term => foodName.includes(term));
       });
       
       // Convert local foods to match API format for compatibility
       const formattedLocalFoods = filteredLocalFoods.map(food => ({
-        food_id: String(food.id),  // Ensure ID is a string
+        food_id: String(food.id),
         food_name: food.name,
         food_description: `${food.calories} cal per ${food.unit}`,
         food_type: "Local",
+        api_source: 'local',
         servings: {
           serving: {
             serving_id: "0",
@@ -243,12 +298,10 @@ const Nutrition = () => {
       
       console.log(`Found ${formattedLocalFoods.length} local food matches`);
       
-      // Only show a message if API search failed (not just empty results)
-      if (apiError && formattedLocalFoods.length > 0 && 
-          !apiError.message.includes('401') && !apiError.message.includes('403')) {
+      if (apiError && formattedLocalFoods.length > 0 && !isUsingFallbackApi) {
         Alert.alert(
           "Using Local Database",
-          "We're using the built-in food database because the online database couldn't be reached."
+          "Online nutrition databases could not be reached. Using offline food database instead."
         );
       }
       
@@ -263,8 +316,34 @@ const Nutrition = () => {
       setIsSearching(false);
     }
   };
+  
+  // Handle FatSecret API errors in a more structured way
+  const handleFatSecretApiError = (error) => {
+    if (error.response && error.response.data && error.response.data.error === 'invalid_scope') {
+      Alert.alert(
+        "API Permission Error",
+        "The nutrition API returned a scope error. The app will try an alternative data source.",
+        [{ text: "Continue" }]
+      );
+      setIsUsingFallbackApi(true);
+    } else if (error.response && error.response.status === 401) {
+      Alert.alert(
+        "Authentication Error",
+        `The nutrition API returned an authentication error. The app will try an alternative data source.`,
+        [{ text: "OK" }]
+      );
+      setIsUsingFallbackApi(true);
+    } else if (error.message.includes('403')) {
+      Alert.alert(
+        "Permission Error",
+        "The app doesn't have permission to access the primary nutrition database. Switching to alternative source.",
+        [{ text: "OK" }]
+      );
+      setIsUsingFallbackApi(true);
+    }
+  };
 
-  // Direct approach to food details - bypassing the click handler issues
+  // Direct access to food details with enhanced API support
   const directAccessFood = async (item) => {
     try {
       console.log('Direct access for food:', JSON.stringify(item));
@@ -280,14 +359,14 @@ const Nutrition = () => {
       setSelectedServingIndex(0);
       setFoodDetailsModalVisible(true);
       
-      // API food - get details directly from the service
-      if (item.food_id) {
+      // FatSecret API food
+      if (item.food_id && (!item.api_source || item.api_source === 'fatsecret')) {
         try {
-          console.log('Getting details for API food ID:', item.food_id);
+          console.log('Getting details for FatSecret API food ID:', item.food_id);
           const details = await fatSecretService.getFoodDetails(item.food_id);
           
           if (details) {
-            console.log('Successfully loaded food details from API');
+            console.log('Successfully loaded food details from FatSecret API');
             setSelectedFoodDetails(details);
             
             // Extract serving sizes
@@ -305,12 +384,16 @@ const Nutrition = () => {
           }
         } catch (error) {
           console.error('Error getting API food details:', error);
-          Alert.alert("Error", "Failed to get food details from API.");
-          setFoodDetailsModalVisible(false);
+          // Try fallback if primary API fails
+          tryFallbackFoodDetails(item);
         }
       } 
-      // Local food - format details directly
-      else if (item.id || (item.calories && item.unit)) {
+      // Fallback API food
+      else if (item.food_id && item.api_source === 'fallback') {
+        tryFallbackFoodDetails(item);
+      }
+      // Local food
+      else if (item.id || (item.calories && item.unit) || item.api_source === 'local') {
         console.log('Processing local food:', item.name || item.food_name);
         const formattedFood = {
           food_id: item.id || 'local',
@@ -345,6 +428,60 @@ const Nutrition = () => {
       setFoodDetailsModalVisible(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Try to get food details from fallback API
+  const tryFallbackFoodDetails = async (item) => {
+    try {
+      console.log('Getting details from fallback API for food ID:', item.food_id);
+      const details = await fallbackFoodService.getFoodDetails(item.food_id);
+      
+      if (details) {
+        console.log('Successfully loaded food details from fallback API');
+        setSelectedFoodDetails(details);
+        
+        // Extract serving sizes
+        if (details.servings && details.servings.serving) {
+          const servings = Array.isArray(details.servings.serving) 
+            ? details.servings.serving 
+            : [details.servings.serving];
+          console.log(`Found ${servings.length} serving sizes from fallback API`);
+          setServingSizes(servings);
+          setSelectedServingIndex(0);
+        }
+      } else {
+        throw new Error('No food details returned from fallback API');
+      }
+    } catch (error) {
+      console.error('Error getting fallback API food details:', error);
+      
+      // Create a simple food detail as last resort
+      const fallbackDetails = {
+        food_id: item.food_id || 'unknown',
+        food_name: item.food_name || 'Unknown Food',
+        food_description: item.food_description || 'No description available',
+        food_type: item.food_type || 'Generic Food',
+        servings: {
+          serving: {
+            serving_id: "0",
+            serving_description: "1 serving",
+            calories: 0,
+            protein: 0,
+            fat: 0,
+            carbohydrate: 0
+          }
+        }
+      };
+      
+      setSelectedFoodDetails(fallbackDetails);
+      setServingSizes([fallbackDetails.servings.serving]);
+      setSelectedServingIndex(0);
+      
+      Alert.alert(
+        "Limited Information",
+        "Full nutritional information for this food is not available."
+      );
     }
   };
 
@@ -567,7 +704,20 @@ const Nutrition = () => {
     );
   };
 
-  // Render a food search result item - completely new approach with a button
+  // Run API diagnostics
+  const runApiDiagnostics = async () => {
+    try {
+      await fatSecretDiagnostic.runAndDisplayDiagnostics();
+    } catch (error) {
+      console.error('Error running API diagnostics:', error);
+      Alert.alert(
+        "Diagnostic Error",
+        "Failed to run API diagnostics. Please try again."
+      );
+    }
+  };
+
+  // Render a food search result item
   const renderFoodItem = ({ item }) => {
     return (
       <View style={styles.foodItemContainer}>
@@ -609,60 +759,85 @@ const Nutrition = () => {
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Ionicons name="arrow-back" size={24} color="#007bff" />
-        <Text style={styles.backText}>Home</Text>
-      </TouchableOpacity>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Nutrition</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      
+      <View style={styles.userInfo}>
+        <Text style={styles.userInfoText}>Tracking for: {user ? user.email : 'Guest'}</Text>
+      </View>
 
-      {/* Header Section - Fixed at top */}
-      <View style={styles.headerSection}>
-        <Text style={styles.title}>Nutrition Tracker</Text>
-        
-        {user ? (
-          <View style={styles.userInfoContainer}>
-            <Text style={styles.userInfo}>Tracking for: {user.email}</Text>
-          </View>
-        ) : (
-          <Text style={styles.guestWarning}>Guest Mode - Sign in to save your data</Text>
-        )}
-        
-        {/* Progress Display */}
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>Today's Nutrition: {nutritionPercentage}%</Text>
-          <ProgressBar progress={nutritionPercentage} color="#4CAF50" />
-          <Text style={styles.caloriesText}>
-            Calories Consumed: {caloriesConsumed} / {TARGET_CALORIES} cal
+      {/* Nutrition Progress */}
+      <View style={styles.progressContainer}>
+        <Text style={styles.progressTitle}>Today's Nutrition: {nutritionPercentage}%</Text>
+        <Text style={styles.caloriesText}>Calories Consumed: {Math.round(caloriesConsumed)} / {TARGET_CALORIES} cal</Text>
+        <View style={styles.progressBarContainer}>
+          <ProgressBar progress={nutritionPercentage} color={COLORS.primary} />
+        </View>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={handleReset}
+        >
+          <Text style={styles.resetButtonText}>Reset Progress</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Database Status Information */}
+      {isUsingFallbackApi ? (
+        <View style={styles.apiInfoContainer}>
+          <Text style={styles.apiInfoText}>
+            Using Alternative Nutrition Database
           </Text>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-            <Text style={styles.resetButtonText}>Reset Progress</Text>
+          <Text style={styles.apiSubInfoText}>
+            The app is using an alternative nutrition database because the primary database couldn't be accessed.
+          </Text>
+          <TouchableOpacity style={styles.diagButton} onPress={runApiDiagnostics}>
+            <Text style={styles.diagButtonText}>Run API Diagnostics</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for food..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-          />
-          <TouchableOpacity 
-            style={styles.searchButton}
-            onPress={handleSearch}
-            disabled={isSearching}
-          >
-            {isSearching ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="search" size={20} color="#fff" />
-            )}
+      ) : fatSecretService.ipAddress && (!fatSecretService.accessToken) ? (
+        <View style={styles.apiInfoContainer}>
+          <Text style={styles.apiInfoText}>
+            Nutrition Database Notice
+          </Text>
+          <Text style={styles.apiSubInfoText}>
+            Using offline food database. The app couldn't connect to the online nutrition database.
+            This may be due to connection issues or API limitations.
+            Your device IP is {fatSecretService.ipAddress}.
+          </Text>
+          <TouchableOpacity style={styles.diagButton} onPress={runApiDiagnostics}>
+            <Text style={styles.diagButtonText}>Run API Diagnostics</Text>
           </TouchableOpacity>
         </View>
+      ) : null}
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search for food..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+        />
+        <TouchableOpacity 
+          style={styles.searchButton}
+          onPress={handleSearch}
+          disabled={isSearching}
+        >
+          {isSearching ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="search" size={20} color="#fff" />
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Main Content */}
@@ -713,63 +888,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f8ff',
+    paddingTop: Platform.OS === 'ios' ? 50 : 20, // Add safe area padding for iOS
   },
-  headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 70, // Space for the fixed back button
-    backgroundColor: '#f0f8ff',
-    zIndex: 1,
-  },
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: '#f0f8ff',
-    paddingBottom: 20,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  sectionContainer: {
-    marginVertical: 10,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 8,
   },
-  backText: {
-    marginLeft: 5,
-    fontSize: 16,
-    color: '#007bff',
+  backButton: {
+    padding: 8,
   },
-  title: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 10,
+    flex: 1,
+    textAlign: 'center',
   },
-  userInfoContainer: {
-    marginBottom: 15,
+  userInfo: {
+    marginHorizontal: 16,
+    marginBottom: 12,
     padding: 10,
     backgroundColor: '#E8F0FE',
     borderRadius: 8,
   },
-  userInfo: {
+  userInfoText: {
     fontSize: 14,
     color: '#4A6FA5',
   },
-  guestWarning: {
-    fontSize: 14,
-    color: '#FF8C00',
-    marginBottom: 15,
-    fontStyle: 'italic',
-  },
   progressContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
     padding: 15,
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -778,8 +929,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    marginHorizontal: 16,
   },
-  progressText: {
+  progressTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
@@ -788,8 +940,8 @@ const styles = StyleSheet.create({
   caloriesText: {
     fontSize: 14,
     color: '#555',
-    marginTop: 10,
-    marginBottom: 15,
+    marginTop: 8,
+    marginBottom: 12,
   },
   resetButton: {
     backgroundColor: '#FF3B30',
@@ -803,7 +955,8 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginVertical: 12,
   },
   searchInput: {
     flex: 1,
@@ -825,33 +978,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 10,
   },
+  sectionContainer: {
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   foodList: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 5,
-    marginBottom: 15,
+    marginBottom: 8,
   },
   foodItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     borderRadius: 8,
     marginBottom: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
   },
   foodItemContent: {
     flex: 1,
@@ -931,7 +1083,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: 12,
     textAlign: 'center',
   },
   servingSizeLabel: {
@@ -1061,19 +1213,61 @@ const styles = StyleSheet.create({
   },
   detailsButton: {
     backgroundColor: '#0a84ff',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 75,
   },
   detailsButtonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  progressBarContainer: {
+    height: 20,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  apiInfoContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+  },
+  apiInfoText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  apiSubInfoText: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 20,
+  },
+  diagButton: {
+    backgroundColor: '#007bff',
+    padding: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  diagButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
 });
 

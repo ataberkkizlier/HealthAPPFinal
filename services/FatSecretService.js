@@ -98,6 +98,7 @@ class FatSecretService {
     try {
       console.log('Requesting new access token from FatSecret API');
       
+      // Try with basic scope only, which has less restrictions
       const response = await axios({
         method: 'post',
         url: 'https://oauth.fatsecret.com/connect/token',
@@ -108,7 +109,7 @@ class FatSecretService {
           username: CLIENT_ID,
           password: CLIENT_SECRET
         },
-        data: 'grant_type=client_credentials&scope=basic premier'
+        data: 'grant_type=client_credentials&scope=basic'
       });
 
       this.accessToken = response.data.access_token;
@@ -127,9 +128,6 @@ class FatSecretService {
       // Check if token has proper scope
       if (response.data.scope) {
         console.log('Token scope:', response.data.scope);
-        if (!response.data.scope.includes('premier')) {
-          console.warn('Token is missing premier scope. Some API features may be unavailable.');
-        }
       } else {
         console.warn('No scope information in token response. Make sure your FatSecret developer app is configured correctly.');
       }
@@ -142,6 +140,13 @@ class FatSecretService {
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', JSON.stringify(error.response.data));
+        
+        // Enhanced error handling for invalid_scope
+        if (error.response.data && error.response.data.error === 'invalid_scope') {
+          console.error('SCOPE ERROR: The app is requesting scopes that are not authorized for this API key.');
+          console.error('Please verify that the FatSecret API key has been granted the "basic" scope.');
+          console.error('This is usually configured in the FatSecret developer console.');
+        }
       }
       throw error;
     }
@@ -372,8 +377,20 @@ class FatSecretService {
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', JSON.stringify(error.response.data).substring(0, 200));
+        
+        // Enhanced diagnostics for common errors
+        if (error.response.status === 401) {
+          console.error('AUTHENTICATION ERROR: This is likely due to either:');
+          console.error('1. Invalid API credentials (CLIENT_ID/CLIENT_SECRET)');
+          console.error('2. IP whitelist restrictions - Make sure your IP address is whitelisted');
+          console.error(`Current IP: ${this.ipAddress} - Add this to your FatSecret developer console`);
+          console.error('Note: IP whitelist changes can take up to 24 hours to fully propagate');
+        } else if (error.response.data && error.response.data.error === 'invalid_scope') {
+          console.error('SCOPE ERROR: The application is requesting unauthorized scopes');
+          console.error('Please check your FatSecret developer account and ensure your app has the basic scope');
+        }
       } else if (error.request) {
-        console.error('No response received during test');
+        console.error('No response received during test - possibly a network connectivity issue');
       }
       return false;
     }
