@@ -12,7 +12,8 @@ import {
     ScrollView as RNScrollView,
     Keyboard,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    TouchableWithoutFeedback
 } from 'react-native'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { COLORS, SIZES, icons, images } from '../constants'
@@ -28,26 +29,6 @@ import { useAuth } from '../context/AuthContext'
 import { logout } from '../firebase/auth'
 import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan } from '../utils/BMICalculator'
 import { useNutrition } from '../context/NutritionContext'
-
-// Simple Number Input Component
-const NumberInput = ({ value, onChangeText, style }) => {
-    return (
-        <TextInput
-            style={[{
-                height: 50, 
-                backgroundColor: '#F5F7FA', 
-                borderWidth: 1,
-                borderColor: '#ddd',
-                borderRadius: 10, 
-                padding: 10, 
-                marginBottom: 15
-            }, style]}
-            value={value}
-            onChangeText={onChangeText}
-            keyboardType="number-pad"
-        />
-    );
-};
 
 const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
@@ -65,6 +46,7 @@ const Profile = ({ navigation }) => {
     const [userImage, setUserImage] = useState(null)
     const [uploadingImage, setUploadingImage] = useState(false)
     const [showBmiInfo, setShowBmiInfo] = useState(false)
+    const [isDarkMode, setIsDarkMode] = useState(false)
     
     // Use separate state variables for each field
     const [age, setAge] = useState('')
@@ -87,6 +69,12 @@ const Profile = ({ navigation }) => {
         { value: 'Active', description: 'Heavy exercise 6-7 days/week' },
         { value: 'Very Active', description: 'Very heavy exercise, physical job or training twice a day' },
     ];
+
+    // Handle dark mode toggle
+    const toggleDarkMode = () => {
+        setIsDarkMode((prev) => !prev);
+        dark ? setScheme('light') : setScheme('dark');
+    };
 
     // Track keyboard visibility
     const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -112,6 +100,11 @@ const Profile = ({ navigation }) => {
             keyboardDidHideListener.remove();
         };
     }, []);
+
+    // Sync dark mode state with current theme
+    useEffect(() => {
+        setIsDarkMode(dark);
+    }, [dark]);
 
     useEffect(() => {
         if (user) {
@@ -206,7 +199,10 @@ const Profile = ({ navigation }) => {
      */
     const renderHeader = () => {
         return (
-            <TouchableOpacity style={styles.headerContainer}>
+            <View style={[
+                styles.headerContainer,
+                { backgroundColor: dark ? COLORS.dark2 : COLORS.white }
+            ]}>
                 <View style={styles.headerLeft}>
                     <Image
                         source={images.logo}
@@ -240,7 +236,7 @@ const Profile = ({ navigation }) => {
                         ]}
                     />
                 </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
         )
     }
     /**
@@ -542,13 +538,6 @@ const Profile = ({ navigation }) => {
      * Render Settings
      */
     const renderSettings = () => {
-        const [isDarkMode, setIsDarkMode] = useState(false)
-
-        const toggleDarkMode = () => {
-            setIsDarkMode((prev) => !prev)
-            dark ? setScheme('light') : setScheme('dark')
-        }
-
         return (
             <View style={styles.settingsContainer}>
                 <SettingsItem
@@ -719,10 +708,18 @@ const Profile = ({ navigation }) => {
             </View>
         )
     }
+
+    const ageInputRef = useRef(null);
+    const weightInputRef = useRef(null);
+    const heightInputRef = useRef(null);
+    const bpInputRef = useRef(null);
+
     return (
-        <View style={{flex: 1, backgroundColor: colors.background}}>
-            {renderHeader()}
-            <ScrollView>
+        <View style={{flex: 1, backgroundColor: dark ? COLORS.dark2 : COLORS.white}}>
+            <SafeAreaView style={{backgroundColor: dark ? COLORS.dark2 : COLORS.white}}>
+                {renderHeader()}
+            </SafeAreaView>
+            <ScrollView contentContainerStyle={{paddingBottom: 100}}>
                 {renderProfile()}
                 <View style={{padding: 16}}>
                     <Text style={styles.title}>Your Health Profile</Text>
@@ -732,48 +729,100 @@ const Profile = ({ navigation }) => {
                     
                     <Text style={styles.label}>Gender</Text>
                     <TouchableOpacity 
-                        style={[styles.input, styles.selectInput, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                        style={[styles.input, styles.selectInput, { backgroundColor: '#FFFFFF' }]}
                         onPress={() => genderSheet.current.open()}
                     >
-                        <Text style={[styles.selectText, {color: dark ? COLORS.white : COLORS.black}]}>
+                        <Text style={[styles.selectText, {color: dark ? COLORS.dark : COLORS.black}]}>
                             {gender || 'Select gender'}
                         </Text>
-                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.white : COLORS.black} />
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
                     </TouchableOpacity>
                     
                     <Text style={styles.label}>Age</Text>
-                    <NumberInput 
-                        value={age}
-                        onChangeText={(text) => setAge(text)}
+                    <TextInput
+                        ref={ageInputRef}
+                        style={{
+                            height: 50,
+                            borderColor: '#E0E0E0',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingHorizontal: 15,
+                            backgroundColor: '#FFFFFF',
+                            fontSize: 16,
+                            marginBottom: 15,
+                            color: '#000000',
+                        }}
+                        defaultValue={age}
+                        keyboardType="number-pad"
+                        onEndEditing={(e) => setAge(e.nativeEvent.text)}
                     />
                     
                     <Text style={styles.label}>Weight (kg)</Text>
-                    <NumberInput 
-                        value={weight}
-                        onChangeText={(text) => setWeight(text)}
+                    <TextInput
+                        ref={weightInputRef}
+                        style={{
+                            height: 50,
+                            borderColor: '#E0E0E0',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingHorizontal: 15,
+                            backgroundColor: '#FFFFFF',
+                            fontSize: 16,
+                            marginBottom: 15,
+                            color: '#000000',
+                        }}
+                        defaultValue={weight}
+                        keyboardType="number-pad"
+                        onEndEditing={(e) => setWeight(e.nativeEvent.text)}
                     />
                     
                     <Text style={styles.label}>Height (cm)</Text>
-                    <NumberInput 
-                        value={height}
-                        onChangeText={(text) => setHeight(text)}
+                    <TextInput
+                        ref={heightInputRef}
+                        style={{
+                            height: 50,
+                            borderColor: '#E0E0E0',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingHorizontal: 15,
+                            backgroundColor: '#FFFFFF',
+                            fontSize: 16,
+                            marginBottom: 15,
+                            color: '#000000',
+                        }}
+                        defaultValue={height}
+                        keyboardType="number-pad"
+                        onEndEditing={(e) => setHeight(e.nativeEvent.text)}
                     />
                     
                     <Text style={styles.label}>Activity Level</Text>
                     <TouchableOpacity 
-                        style={[styles.input, styles.selectInput, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                        style={[styles.input, styles.selectInput, { backgroundColor: '#FFFFFF' }]}
                         onPress={() => activitySheet.current.open()}
                     >
-                        <Text style={[styles.selectText, {color: dark ? COLORS.white : COLORS.black}]}>
+                        <Text style={[styles.selectText, {color: dark ? COLORS.dark : COLORS.black}]}>
                             {activityLevel || 'Select activity level'}
                         </Text>
-                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.white : COLORS.black} />
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
                     </TouchableOpacity>
                     
                     <Text style={styles.label}>Blood Pressure</Text>
-                    <NumberInput 
-                        value={bloodPressure}
-                        onChangeText={(text) => setBloodPressure(text)}
+                    <TextInput
+                        ref={bpInputRef}
+                        style={{
+                            height: 50,
+                            borderColor: '#E0E0E0',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingHorizontal: 15,
+                            backgroundColor: '#FFFFFF',
+                            fontSize: 16,
+                            marginBottom: 15,
+                            color: '#000000',
+                        }}
+                        defaultValue={bloodPressure}
+                        keyboardType="number-pad"
+                        onEndEditing={(e) => setBloodPressure(e.nativeEvent.text)}
                     />
                     
                     {bmi > 0 && (
@@ -814,6 +863,21 @@ const Profile = ({ navigation }) => {
                     
                     <View style={styles.spacer} />
                     {renderSettings()}
+                    
+                    {/* Add a direct logout button at the bottom for easier access */}
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: 'red',
+                            padding: 15,
+                            borderRadius: 10,
+                            alignItems: 'center',
+                            marginTop: 20,
+                            marginBottom: 50
+                        }}
+                        onPress={() => refRBSheet.current.open()}
+                    >
+                        <Text style={{color: 'white', fontWeight: 'bold'}}>Logout</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
             
@@ -825,7 +889,7 @@ const Profile = ({ navigation }) => {
                 ref={refRBSheet}
                 closeOnDragDown={true}
                 closeOnPressMask={false}
-                height={SIZES.height * 0.8}
+                height={260}
                 customStyles={{
                     wrapper: {
                         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -839,7 +903,6 @@ const Profile = ({ navigation }) => {
                     container: {
                         borderTopRightRadius: 32,
                         borderTopLeftRadius: 32,
-                        height: 260,
                         backgroundColor: dark ? COLORS.dark2 : COLORS.white,
                     },
                 }}
@@ -911,6 +974,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        height: 56,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#E0E0E0',
     },
     headerLeft: {
         flexDirection: 'row',
@@ -1097,11 +1165,17 @@ const styles = StyleSheet.create({
         color: '#555',
     },
     input: {
+        height: 50,
+        backgroundColor: '#F5F7FA',
         borderWidth: 1,
         borderColor: '#ddd',
         borderRadius: 10,
-        padding: 12,
+        padding: 10,
+        marginBottom: 15,
         fontSize: 16,
+        color: '#000',
+    },
+    inputContainer: {
         marginBottom: 15,
     },
     button: {
@@ -1133,7 +1207,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     spacer: {
-        height: 50,
+        height: 100,
     },
     // Selection inputs
     selectInput: {

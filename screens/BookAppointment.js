@@ -41,7 +41,9 @@ const BookAppointment = ({ navigation }) => {
                     selectedHour === item.id && styles.selectedHourButton]}
                 onPress={() => handleHourSelect(item.id)}>
                 <Text style={[styles.hourText,
-                selectedHour === item.id && styles.selectedHourText]}>{item.hour}</Text>
+                selectedHour === item.id && styles.selectedHourText]}>
+                    {item.hour}
+                </Text>
             </TouchableOpacity>
         );
     };
@@ -108,7 +110,6 @@ const styles = StyleSheet.create({
     hourButton: {
         borderRadius: 32,
         borderWidth: 1,
-        borderColor: '#ccc',
         marginHorizontal: 5,
         borderColor: COLORS.primary,
         borderWidth: 1.4,
