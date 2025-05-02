@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { healthDataOperations } from '../firebase/healthData';
 import consumedFoodService from '../services/ConsumedFoodService';
-import { getNutritionPlan, WEIGHT_GOALS } from '../utils/BMICalculator';
+import { getNutritionPlan } from '../utils/BMICalculator';
 
 const NutritionContext = createContext();
 
@@ -50,21 +50,19 @@ export const NutritionProvider = ({ children }) => {
     useEffect(() => {
         if (!userData) return;
         
-        const { weight, height, age, gender, activityLevel, weightGoal } = userData;
+        const { weight, height, age, gender, activityLevel } = userData;
         
         // Check if we have all required data to calculate a nutrition plan
         if (weight && height && age && gender) {
             const activityLevelValue = activityLevel || 'moderate'; // Default to moderate if not set
-            const weightGoalValue = weightGoal || WEIGHT_GOALS.MAINTAIN; // Default to maintenance if not set
             
-            // Calculate nutrition plan with weight goal
+            // Calculate nutrition plan
             const plan = getNutritionPlan(
                 parseFloat(weight),
                 parseFloat(height),
                 parseInt(age),
                 gender.toLowerCase(),
-                activityLevelValue,
-                weightGoalValue
+                activityLevelValue
             );
             
             setNutritionPlan(plan);
@@ -76,7 +74,6 @@ export const NutritionProvider = ({ children }) => {
             setFatTarget(plan.nutrientGoals.fat);
             
             console.log('Updated nutrition plan based on user profile:', plan);
-            console.log(`Using weight goal: ${weightGoalValue}, calories: ${plan.dailyCalories}`);
         }
     }, [userData]);
 
