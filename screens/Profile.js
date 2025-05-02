@@ -7,9 +7,14 @@ import {
     Switch,
     TextInput,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    Modal,
+    ScrollView as RNScrollView,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { COLORS, SIZES, icons, images } from '../constants'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ScrollView } from 'react-native-virtualized-view'
@@ -21,29 +26,108 @@ import RBSheet from 'react-native-raw-bottom-sheet'
 import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../firebase/auth'
+import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan } from '../utils/BMICalculator'
+import { useNutrition } from '../context/NutritionContext'
+
+// Simple Number Input Component
+const NumberInput = ({ value, onChangeText, style }) => {
+    return (
+        <TextInput
+            style={[{
+                height: 50, 
+                backgroundColor: '#F5F7FA', 
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 10, 
+                padding: 10, 
+                marginBottom: 15
+            }, style]}
+            value={value}
+            onChangeText={onChangeText}
+            keyboardType="number-pad"
+        />
+    );
+};
 
 const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
+    const genderSheet = useRef()
+    const activitySheet = useRef()
     const { dark, colors, setScheme } = useTheme()
     const { user, userData, saveHealthData, profileImage, updateProfileImage } = useAuth()
+    const { nutritionPlan } = useNutrition()
+    
     const [userName, setUserName] = useState('')
     const [userEmail, setUserEmail] = useState('')
-    const [weight, setWeight] = useState('')
-    const [height, setHeight] = useState('')
-    const [bloodPressure, setBloodPressure] = useState('')
+    const [gender, setGender] = useState('Male')
+    const [activityLevel, setActivityLevel] = useState('Moderate')
     const [loading, setLoading] = useState(false)
     const [userImage, setUserImage] = useState(null)
     const [uploadingImage, setUploadingImage] = useState(false)
+    const [showBmiInfo, setShowBmiInfo] = useState(false)
+    
+    // Use separate state variables for each field
+    const [age, setAge] = useState('')
+    const [weight, setWeight] = useState('')
+    const [height, setHeight] = useState('')
+    const [bloodPressure, setBloodPressure] = useState('')
+    
+    // BMI calculation 
+    const bmi = weight && height 
+        ? calculateBMI(parseFloat(weight), parseFloat(height))
+        : 0;
+    const bmiCategory = getBMICategory(bmi);
+    const bmiInfo = getBMIStatusInfo(bmiCategory);
+    
+    // Activity level options
+    const activityLevels = [
+        { value: 'Sedentary', description: 'Little or no exercise' },
+        { value: 'Light', description: 'Light exercise 1-3 days/week' },
+        { value: 'Moderate', description: 'Moderate exercise 3-5 days/week' },
+        { value: 'Active', description: 'Heavy exercise 6-7 days/week' },
+        { value: 'Very Active', description: 'Very heavy exercise, physical job or training twice a day' },
+    ];
+
+    // Track keyboard visibility
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    
+    // Set up keyboard listeners
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            () => {
+                setKeyboardVisible(true);
+            }
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => {
+                setKeyboardVisible(false);
+            }
+        );
+
+        // Cleanup function
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     useEffect(() => {
         if (user) {
             setUserName(user.displayName || 'User')
             setUserEmail(user.email || '')
         }
+        
         if (userData) {
+            // Update each state variable directly
+            setAge(userData.age?.toString() || '')
             setWeight(userData.weight?.toString() || '')
             setHeight(userData.height?.toString() || '')
             setBloodPressure(userData.bloodPressure || '')
+            
+            setGender(userData.gender || 'Male')
+            setActivityLevel(userData.activityLevel || 'Moderate')
         }
         
         // Set profile image if available
@@ -82,18 +166,30 @@ const Profile = ({ navigation }) => {
             return
         }
         
+        // Validate inputs
+        if (!weight || !height || !age) {
+            Alert.alert('Required Fields', 'Please fill in your weight, height, and age to calculate your BMI and nutrition plan.')
+            return
+        }
+        
         setLoading(true)
         try {
             const healthData = {
                 weight: weight ? parseFloat(weight) : null,
                 height: height ? parseFloat(height) : null,
-                bloodPressure,
+                bloodPressure: bloodPressure,
+                age: age ? parseInt(age) : null,
+                gender,
+                activityLevel,
             }
             
             const result = await saveHealthData(healthData)
             
             if (result.success) {
                 Alert.alert('Profile saved successfully!')
+                
+                // Show BMI information
+                setShowBmiInfo(true)
             } else {
                 Alert.alert('Failed to save profile: ' + (result.error || 'Unknown error'))
             }
@@ -238,6 +334,210 @@ const Profile = ({ navigation }) => {
             </View>
         )
     }
+    
+    // Render BMI Information Modal
+    const renderBmiInfoModal = () => {
+        return (
+            <Modal
+                visible={showBmiInfo}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowBmiInfo(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContainer, {backgroundColor: dark ? COLORS.dark2 : COLORS.white}]}>
+                        <Text style={[styles.modalTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                            Your Health Profile
+                        </Text>
+                        
+                        <View style={styles.bmiCircle}>
+                            <Text style={styles.bmiValue}>{bmi}</Text>
+                            <Text style={styles.bmiLabel}>BMI</Text>
+                        </View>
+                        
+                        <Text style={[styles.bmiStatus, {
+                            color: bmi > 0 ? getBmiStatusColor(bmiCategory) : COLORS.gray
+                        }]}>
+                            {bmi > 0 ? bmiInfo.status : 'Unknown'}
+                        </Text>
+                        
+                        <Text style={[styles.bmiDescription, {color: dark ? COLORS.white : COLORS.black}]}>
+                            {bmiInfo.description}
+                        </Text>
+                        
+                        <View style={styles.nutritionPlanContainer}>
+                            <Text style={[styles.nutritionTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                                Daily Nutrition Goals:
+                            </Text>
+                            
+                            {nutritionPlan ? (
+                                <View style={styles.nutrientGoalsContainer}>
+                                    <View style={styles.nutrientItem}>
+                                        <Text style={styles.nutrientLabel}>Calories:</Text>
+                                        <Text style={styles.nutrientValue}>{nutritionPlan.dailyCalories} kcal</Text>
+                                    </View>
+                                    <View style={styles.nutrientItem}>
+                                        <Text style={styles.nutrientLabel}>Protein:</Text>
+                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.protein}g</Text>
+                                    </View>
+                                    <View style={styles.nutrientItem}>
+                                        <Text style={styles.nutrientLabel}>Carbs:</Text>
+                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.carbs}g</Text>
+                                    </View>
+                                    <View style={styles.nutrientItem}>
+                                        <Text style={styles.nutrientLabel}>Fat:</Text>
+                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.fat}g</Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                <Text style={styles.noNutritionPlan}>
+                                    Nutrition plan will be calculated based on your profile
+                                </Text>
+                            )}
+                        </View>
+                        
+                        <TouchableOpacity 
+                            style={styles.modalButton}
+                            onPress={() => setShowBmiInfo(false)}
+                        >
+                            <Text style={styles.modalButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
+    
+    // Helper function to get color based on BMI category
+    const getBmiStatusColor = (category) => {
+        switch (category) {
+            case 'underweight':
+                return '#3498db'; // Blue
+            case 'normal':
+                return '#2ecc71'; // Green
+            case 'overweight':
+                return '#f39c12'; // Orange
+            case 'obese':
+                return '#e74c3c'; // Red
+            case 'severely_obese':
+                return '#c0392b'; // Dark Red
+            default:
+                return COLORS.gray;
+        }
+    };
+    
+    // Gender selection bottom sheet
+    const renderGenderSheet = () => {
+        return (
+            <RBSheet
+                ref={genderSheet}
+                closeOnDragDown={true}
+                closeOnPressMask={true}
+                height={200}
+                customStyles={{
+                    wrapper: { backgroundColor: 'rgba(0,0,0,0.5)' },
+                    draggableIcon: { backgroundColor: dark ? COLORS.gray2 : COLORS.grayscale200 },
+                    container: {
+                        borderTopRightRadius: 20, 
+                        borderTopLeftRadius: 20,
+                        backgroundColor: dark ? COLORS.dark2 : COLORS.white
+                    }
+                }}
+            >
+                <RNScrollView>
+                    <Text style={[styles.sheetTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                        Select Gender
+                    </Text>
+                    <TouchableOpacity 
+                        style={[styles.sheetOption, gender === 'Male' && styles.selectedOption]}
+                        onPress={() => {
+                            setGender('Male');
+                            genderSheet.current.close();
+                        }}
+                    >
+                        <Text style={[styles.sheetOptionText, gender === 'Male' && styles.selectedOptionText]}>
+                            Male
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.sheetOption, gender === 'Female' && styles.selectedOption]}
+                        onPress={() => {
+                            setGender('Female');
+                            genderSheet.current.close();
+                        }}
+                    >
+                        <Text style={[styles.sheetOptionText, gender === 'Female' && styles.selectedOptionText]}>
+                            Female
+                        </Text>
+                    </TouchableOpacity>
+                </RNScrollView>
+            </RBSheet>
+        );
+    };
+    
+    // Activity level selection bottom sheet
+    const renderActivitySheet = () => {
+        return (
+            <RBSheet
+                ref={activitySheet}
+                closeOnDragDown={true}
+                closeOnPressMask={true}
+                height={400}
+                customStyles={{
+                    wrapper: { backgroundColor: 'rgba(0,0,0,0.5)' },
+                    draggableIcon: { backgroundColor: dark ? COLORS.gray2 : COLORS.grayscale200 },
+                    container: {
+                        borderTopRightRadius: 20, 
+                        borderTopLeftRadius: 20,
+                        backgroundColor: dark ? COLORS.dark2 : COLORS.white
+                    }
+                }}
+            >
+                <RNScrollView>
+                    <Text style={[styles.sheetTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                        Activity Level
+                    </Text>
+                    {activityLevels.map((level, index) => (
+                        <TouchableOpacity 
+                            key={index}
+                            style={[styles.sheetOption, activityLevel === level.value && styles.selectedOption]}
+                            onPress={() => {
+                                setActivityLevel(level.value);
+                                activitySheet.current.close();
+                            }}
+                        >
+                            <Text style={[styles.sheetOptionText, activityLevel === level.value && styles.selectedOptionText]}>
+                                {level.value}
+                            </Text>
+                            <Text style={styles.sheetOptionDescription}>
+                                {level.description}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </RNScrollView>
+            </RBSheet>
+        );
+    };
+    
+    // Simple focus handlers with no side effects
+    const handleFocus = useCallback((inputName) => {
+        // Intentionally left empty to avoid any focus-related issues
+    }, []);
+    
+    const handleBlur = useCallback(() => {
+        // Intentionally left empty to avoid any focus-related issues
+    }, []);
+    
+    // Dismiss keyboard only when explicitly requested
+    const dismissKeyboard = () => {
+        Keyboard.dismiss();
+    };
+    
+    // Don't show any keyboard dismiss button
+    const renderKeyboardDismissButton = () => {
+        return null;
+    };
+    
     /**
      * Render Settings
      */
@@ -420,51 +720,79 @@ const Profile = ({ navigation }) => {
         )
     }
     return (
-        <SafeAreaView
-            style={[styles.area, { backgroundColor: colors.background }]}
-        >
-            <View
-                style={[
-                    styles.container,
-                    { backgroundColor: colors.background },
-                ]}
-            >
-                {renderHeader()}
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    {renderProfile()}
+        <View style={{flex: 1, backgroundColor: colors.background}}>
+            {renderHeader()}
+            <ScrollView>
+                {renderProfile()}
+                <View style={{padding: 16}}>
                     <Text style={styles.title}>Your Health Profile</Text>
                     
                     <Text style={styles.label}>Email</Text>
                     <Text style={styles.value}>{userEmail}</Text>
                     
+                    <Text style={styles.label}>Gender</Text>
+                    <TouchableOpacity 
+                        style={[styles.input, styles.selectInput, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                        onPress={() => genderSheet.current.open()}
+                    >
+                        <Text style={[styles.selectText, {color: dark ? COLORS.white : COLORS.black}]}>
+                            {gender || 'Select gender'}
+                        </Text>
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.white : COLORS.black} />
+                    </TouchableOpacity>
+                    
+                    <Text style={styles.label}>Age</Text>
+                    <NumberInput 
+                        value={age}
+                        onChangeText={(text) => setAge(text)}
+                    />
+                    
                     <Text style={styles.label}>Weight (kg)</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                    <NumberInput 
                         value={weight}
-                        onChangeText={setWeight}
-                        placeholder="Enter your weight"
-                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
-                        keyboardType="numeric"
+                        onChangeText={(text) => setWeight(text)}
                     />
                     
                     <Text style={styles.label}>Height (cm)</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                    <NumberInput 
                         value={height}
-                        onChangeText={setHeight}
-                        placeholder="Enter your height"
-                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
-                        keyboardType="numeric"
+                        onChangeText={(text) => setHeight(text)}
                     />
                     
+                    <Text style={styles.label}>Activity Level</Text>
+                    <TouchableOpacity 
+                        style={[styles.input, styles.selectInput, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                        onPress={() => activitySheet.current.open()}
+                    >
+                        <Text style={[styles.selectText, {color: dark ? COLORS.white : COLORS.black}]}>
+                            {activityLevel || 'Select activity level'}
+                        </Text>
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.white : COLORS.black} />
+                    </TouchableOpacity>
+                    
                     <Text style={styles.label}>Blood Pressure</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
+                    <NumberInput 
                         value={bloodPressure}
-                        onChangeText={setBloodPressure}
-                        placeholder="e.g. 120/80"
-                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
+                        onChangeText={(text) => setBloodPressure(text)}
                     />
+                    
+                    {bmi > 0 && (
+                        <TouchableOpacity 
+                            style={styles.bmiContainer}
+                            onPress={() => setShowBmiInfo(true)}
+                        >
+                            <View style={styles.bmiHeader}>
+                                <Text style={styles.bmiHeaderText}>Your BMI</Text>
+                                <MaterialIcons name="info-outline" size={20} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.bmiContent}>
+                                <Text style={styles.bmiValueText}>{bmi}</Text>
+                                <Text style={[styles.bmiCategoryText, {color: getBmiStatusColor(bmiCategory)}]}>
+                                    {bmiInfo.status}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
                     
                     <TouchableOpacity 
                         style={[styles.button, loading && styles.buttonDisabled]}
@@ -486,8 +814,13 @@ const Profile = ({ navigation }) => {
                     
                     <View style={styles.spacer} />
                     {renderSettings()}
-                </ScrollView>
-            </View>
+                </View>
+            </ScrollView>
+            
+            {renderGenderSheet()}
+            {renderActivitySheet()}
+            {renderBmiInfoModal()}
+            
             <RBSheet
                 ref={refRBSheet}
                 closeOnDragDown={true}
@@ -559,7 +892,7 @@ const Profile = ({ navigation }) => {
                     />
                 </View>
             </RBSheet>
-        </SafeAreaView>
+        </View>
     )
 }
 
@@ -801,6 +1134,228 @@ const styles = StyleSheet.create({
     },
     spacer: {
         height: 50,
+    },
+    // Selection inputs
+    selectInput: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    selectText: {
+        fontSize: 16,
+    },
+    
+    // Bottom sheets
+    sheetTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginVertical: 15,
+    },
+    sheetOption: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    selectedOption: {
+        backgroundColor: COLORS.primary + '20',
+    },
+    sheetOptionText: {
+        fontSize: 16,
+    },
+    selectedOptionText: {
+        color: COLORS.primary,
+        fontWeight: 'bold',
+    },
+    sheetOptionDescription: {
+        fontSize: 12,
+        color: COLORS.gray,
+        marginTop: 4,
+    },
+    
+    // BMI display
+    bmiContainer: {
+        backgroundColor: COLORS.secondaryWhite,
+        borderRadius: 10,
+        padding: 15,
+        marginTop: 20,
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    bmiHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    bmiHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLORS.primary,
+    },
+    bmiContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    bmiValueText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginRight: 15,
+    },
+    bmiCategoryText: {
+        fontSize: 18,
+        fontWeight: '500',
+    },
+    
+    // BMI info modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        width: '85%',
+        maxHeight: '80%',
+        backgroundColor: COLORS.white,
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    bmiCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    bmiValue: {
+        fontSize: 30,
+        fontWeight: 'bold',
+        color: COLORS.white,
+    },
+    bmiLabel: {
+        fontSize: 14,
+        color: COLORS.white,
+        opacity: 0.8,
+    },
+    bmiStatus: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    bmiDescription: {
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 20,
+        paddingHorizontal: 10,
+    },
+    nutritionPlanContainer: {
+        width: '100%',
+        marginTop: 5,
+        marginBottom: 15,
+    },
+    nutritionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    nutrientGoalsContainer: {
+        width: '100%',
+    },
+    nutrientItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    nutrientLabel: {
+        fontSize: 16,
+        color: COLORS.gray,
+    },
+    nutrientValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLORS.primary,
+    },
+    noNutritionPlan: {
+        fontSize: 14,
+        color: COLORS.gray,
+        fontStyle: 'italic',
+        textAlign: 'center',
+    },
+    modalButton: {
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: 30,
+        paddingVertical: 12,
+        borderRadius: 25,
+        marginTop: 10,
+    },
+    modalButtonText: {
+        color: COLORS.white,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    focusedInput: {
+        borderColor: COLORS.primary,
+        borderWidth: 2,
+    },
+    focusedInputWrapper: {
+        borderColor: COLORS.primary,
+        borderWidth: 2,
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    inputField: {
+        padding: 12,
+        fontSize: 16,
+        flex: 1,
+        borderWidth: 0,
+    },
+    keyboardDismissButton: {
+        position: 'absolute',
+        right: 20,
+        bottom: 30,
+        backgroundColor: COLORS.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 999,
+    },
+    keyboardDismissText: {
+        color: COLORS.white,
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 })
 

@@ -12,12 +12,26 @@ class ConsumedFoodService {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       const storageKey = getConsumedFoodsKey(userId);
       
+      console.log(`Adding food for ${userId || 'guest'} on ${today}`, foodItem);
+      
       // Get existing consumed foods
       const existingData = await AsyncStorage.getItem(storageKey);
       let consumedFoods = existingData ? JSON.parse(existingData) : {};
       
+      // Debug existing data
+      if (existingData) {
+        console.log(`Retrieved existing food data: `, 
+          Object.keys(consumedFoods).length > 0 
+            ? `${Object.keys(consumedFoods).length} days of data` 
+            : 'empty object'
+        );
+      } else {
+        console.log('No existing food data, creating new storage');
+      }
+      
       // Initialize today's entry if it doesn't exist
       if (!consumedFoods[today]) {
+        console.log(`Creating new entry for ${today}`);
         consumedFoods[today] = [];
       }
       
@@ -28,9 +42,11 @@ class ConsumedFoodService {
       };
       
       consumedFoods[today].push(foodWithTimestamp);
+      console.log(`Added food. New count: ${consumedFoods[today].length}`);
       
       // Save updated list
       await AsyncStorage.setItem(storageKey, JSON.stringify(consumedFoods));
+      console.log('Saved updated food list to storage');
       
       // Update daily totals
       await this.updateDailyTotals(foodItem, userId);
@@ -84,11 +100,20 @@ class ConsumedFoodService {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       const storageKey = getConsumedFoodsKey(userId);
       
+      console.log(`Getting today's foods for ${userId || 'guest'}, today is ${today}`);
       const existingData = await AsyncStorage.getItem(storageKey);
-      if (!existingData) return [];
+      
+      if (!existingData) {
+        console.log(`No food data found for ${userId || 'guest'}`);
+        return [];
+      }
       
       const consumedFoods = JSON.parse(existingData);
-      return consumedFoods[today] || [];
+      console.log(`Found food data for ${userId || 'guest'}:`, consumedFoods);
+      
+      const todaysFoods = consumedFoods[today] || [];
+      console.log(`Today's foods count: ${todaysFoods.length}`);
+      return todaysFoods;
     } catch (error) {
       console.error('Error getting today\'s foods:', error);
       return [];

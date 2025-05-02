@@ -11,7 +11,8 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
-  Platform
+  Platform,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -71,7 +72,23 @@ const foods = [
 const Nutrition = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { nutritionPercentage, updateNutritionPercentage, caloriesConsumed, updateCaloriesConsumed, resetNutrition, TARGET_CALORIES } = useNutrition();
+  const { 
+    nutritionPercentage, 
+    updateNutritionPercentage, 
+    caloriesConsumed, 
+    proteinConsumed,
+    carbsConsumed,
+    fatConsumed,
+    calorieTarget,
+    proteinTarget,
+    carbsTarget,
+    fatTarget,
+    updateCaloriesConsumed, 
+    resetNutrition, 
+    calculateNutritionMetrics,
+    addFoodItem,
+    updateNutrientIntake
+  } = useNutrition();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -86,6 +103,32 @@ const Nutrition = () => {
   const [servingSizes, setServingSizes] = useState([]);
   const [selectedServingIndex, setSelectedServingIndex] = useState(0);
   const [isUsingFallbackApi, setIsUsingFallbackApi] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Calculate individual nutrient percentages
+  const proteinPercentage = Math.min(100, Math.round((proteinConsumed / proteinTarget) * 100)) || 0;
+  const carbsPercentage = Math.min(100, Math.round((carbsConsumed / carbsTarget) * 100)) || 0;
+  const fatPercentage = Math.min(100, Math.round((fatConsumed / fatTarget) * 100)) || 0;
+  
+  // Calculate overall percentage based on macronutrients
+  const calculateOverallPercentage = () => {
+    return Math.round((proteinPercentage + carbsPercentage + fatPercentage) / 3);
+  };
+  
+  // Get color for the overall nutrition percentage
+  const getOverallPercentageColor = (percentage) => {
+    if (percentage >= 85) return '#4CAF50'; // Green
+    if (percentage >= 70) return '#8BC34A'; // Light Green
+    if (percentage >= 50) return '#FFC107'; // Amber
+    if (percentage >= 25) return '#FF9800'; // Orange
+    return '#F44336'; // Red
+  };
+
+  // Manual refresh function
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTodaysFoods().then(() => setRefreshing(false));
+  }, []);
 
   // Initialize FatSecret API service
   useEffect(() => {
@@ -164,8 +207,13 @@ const Nutrition = () => {
   // Reload data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      console.log('Nutrition screen in focus, reloading data...');
+      // Always force reload when screen comes into focus
       loadTodaysFoods();
-    }, [user])
+      return () => {
+        // Clean up if needed when screen loses focus
+      };
+    }, [])  // Remove user dependency to ensure it always runs
   );
 
   // Load today's consumed foods
@@ -173,13 +221,21 @@ const Nutrition = () => {
     try {
       setIsLoading(true);
       const userId = user ? user.uid : null;
+      
+      // Load the list of consumed foods
       const foods = await consumedFoodService.getTodaysFoods(userId);
       setTodaysFoods(foods);
       
-      // Also update the total calories and nutrition percentage
+      // Also update all macronutrients
       const totals = await consumedFoodService.getTodaysTotals(userId);
       if (totals) {
-        updateCaloriesConsumed(totals.calories);
+        console.log('Loaded totals from ConsumedFoodService:', totals);
+        updateNutrientIntake(
+          totals.calories || 0,
+          totals.protein || 0,
+          totals.carbs || 0,
+          totals.fat || 0
+        );
       }
     } catch (error) {
       console.error('Error loading today\'s foods:', error);
@@ -374,8 +430,30 @@ const Nutrition = () => {
               const servings = Array.isArray(details.servings.serving) 
                 ? details.servings.serving 
                 : [details.servings.serving];
-              console.log(`Found ${servings.length} serving sizes from API`);
-              setServingSizes(servings);
+              
+              // Make sure servings have proper nutrition data, fill with zeros if missing
+              const enhancedServings = servings.map(serving => ({
+                ...serving,
+                calories: serving.calories || 0,
+                protein: serving.protein || 0,
+                fat: serving.fat || 0,
+                carbohydrate: serving.carbohydrate || 0
+              }));
+              
+              console.log(`Found ${enhancedServings.length} serving sizes from API`);
+              setServingSizes(enhancedServings);
+              setSelectedServingIndex(0);
+            } else {
+              // Create a default serving if none exists
+              const defaultServing = {
+                serving_id: "0",
+                serving_description: "1 serving",
+                calories: 0,
+                protein: 0,
+                fat: 0,
+                carbohydrate: 0
+              };
+              setServingSizes([defaultServing]);
               setSelectedServingIndex(0);
             }
           } else {
@@ -399,24 +477,23 @@ const Nutrition = () => {
           food_id: item.id || 'local',
           food_name: item.name || item.food_name,
           food_description: `${item.calories} cal per ${item.unit}`,
-          food_type: "Local",
-          servings: {
-            serving: {
-              serving_id: "0",
-              serving_description: item.unit,
-              serving_url: "",
-              metric_serving_amount: 1,
-              metric_serving_unit: item.unit,
-              calories: item.calories,
-              protein: item.protein || 0,
-              fat: item.fat || 0,
-              carbohydrate: item.carbs || 0
-            }
-          }
+          food_type: "Local"
+        };
+        
+        const localServing = {
+          serving_id: "0",
+          serving_description: item.unit,
+          serving_url: "",
+          metric_serving_amount: 1,
+          metric_serving_unit: item.unit,
+          calories: item.calories || 0,
+          protein: item.protein || 0,
+          fat: item.fat || 0,
+          carbohydrate: item.carbs || 0
         };
         
         setSelectedFoodDetails(formattedFood);
-        setServingSizes([formattedFood.servings.serving]);
+        setServingSizes([localServing]);
         setSelectedServingIndex(0);
       } else {
         Alert.alert("Error", "Invalid food data format.");
@@ -446,8 +523,30 @@ const Nutrition = () => {
           const servings = Array.isArray(details.servings.serving) 
             ? details.servings.serving 
             : [details.servings.serving];
-          console.log(`Found ${servings.length} serving sizes from fallback API`);
-          setServingSizes(servings);
+          
+          // Make sure servings have proper nutrition data, fill with zeros if missing
+          const enhancedServings = servings.map(serving => ({
+            ...serving,
+            calories: serving.calories || 0,
+            protein: serving.protein || 0,
+            fat: serving.fat || 0,
+            carbohydrate: serving.carbohydrate || 0
+          }));
+          
+          console.log(`Found ${enhancedServings.length} serving sizes from fallback API`);
+          setServingSizes(enhancedServings);
+          setSelectedServingIndex(0);
+        } else {
+          // Create a default serving if none exists
+          const defaultServing = {
+            serving_id: "0",
+            serving_description: "1 serving",
+            calories: 0,
+            protein: 0,
+            fat: 0,
+            carbohydrate: 0
+          };
+          setServingSizes([defaultServing]);
           setSelectedServingIndex(0);
         }
       } else {
@@ -461,26 +560,25 @@ const Nutrition = () => {
         food_id: item.food_id || 'unknown',
         food_name: item.food_name || 'Unknown Food',
         food_description: item.food_description || 'No description available',
-        food_type: item.food_type || 'Generic Food',
-        servings: {
-          serving: {
-            serving_id: "0",
-            serving_description: "1 serving",
-            calories: 0,
-            protein: 0,
-            fat: 0,
-            carbohydrate: 0
-          }
-        }
+        food_type: item.food_type || 'Generic Food'
+      };
+      
+      const defaultServing = {
+        serving_id: "0",
+        serving_description: item.food_description ? "1 serving" : "100g",
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbohydrate: 0
       };
       
       setSelectedFoodDetails(fallbackDetails);
-      setServingSizes([fallbackDetails.servings.serving]);
+      setServingSizes([defaultServing]);
       setSelectedServingIndex(0);
       
       Alert.alert(
         "Limited Information",
-        "Full nutritional information for this food is not available."
+        "Full nutritional information for this food is not available. Default values will be used."
       );
     }
   };
@@ -556,28 +654,28 @@ const Nutrition = () => {
                 <View style={styles.nutritionFactsRow}>
                   <Text style={styles.nutritionFactsLabel}>Calories</Text>
                   <Text style={styles.nutritionFactsValue}>
-                    {selectedFoodDetails.calories || 'N/A'}
+                    {servingSizes[selectedServingIndex]?.calories || 'N/A'}
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.nutritionFactsRow}>
                   <Text style={styles.nutritionFactsLabel}>Carbohydrates</Text>
                   <Text style={styles.nutritionFactsValue}>
-                    {selectedFoodDetails.carbs || 'N/A'}g
+                    {servingSizes[selectedServingIndex]?.carbohydrate || '0'}g
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.nutritionFactsRow}>
                   <Text style={styles.nutritionFactsLabel}>Protein</Text>
                   <Text style={styles.nutritionFactsValue}>
-                    {selectedFoodDetails.protein || 'N/A'}g
+                    {servingSizes[selectedServingIndex]?.protein || '0'}g
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.nutritionFactsRow}>
                   <Text style={styles.nutritionFactsLabel}>Fat</Text>
                   <Text style={styles.nutritionFactsValue}>
-                    {selectedFoodDetails.fat || 'N/A'}g
+                    {servingSizes[selectedServingIndex]?.fat || '0'}g
                   </Text>
                 </View>
               </View>
@@ -599,7 +697,14 @@ const Nutrition = () => {
                   <TextInput
                     style={styles.quantityInput}
                     value={quantity}
-                    onChangeText={setQuantity}
+                    onChangeText={(text) => {
+                      // Only allow numeric input with decimal point
+                      const cleanedText = text.replace(/[^0-9.]/g, '');
+                      // Ensure at most one decimal point
+                      const parts = cleanedText.split('.');
+                      const finalText = parts[0] + (parts.length > 1 ? '.' + parts[1] : '');
+                      setQuantity(finalText);
+                    }}
                     keyboardType="numeric"
                     selectTextOnFocus
                   />
@@ -657,14 +762,20 @@ const Nutrition = () => {
     console.log('Serving:', serving.serving_description);
     console.log('Quantity:', qty);
     
+    // Ensure numeric values for all nutrition data with defaults of 0
+    const calories = parseFloat(serving.calories) || 0;
+    const protein = parseFloat(serving.protein) || 0;
+    const fat = parseFloat(serving.fat) || 0;
+    const carbs = parseFloat(serving.carbohydrate) || 0;
+    
     // Calculate nutrition values based on quantity
     const foodItem = {
       name: selectedFoodDetails.food_name,
       description: serving.serving_description,
-      calories: Math.round(serving.calories * qty),
-      protein: Math.round((serving.protein || 0) * qty * 100) / 100,
-      fat: Math.round((serving.fat || 0) * qty * 100) / 100,
-      carbs: Math.round((serving.carbohydrate || 0) * qty * 100) / 100,
+      calories: Math.round(calories * qty),
+      protein: Math.round((protein * qty) * 10) / 10, // Round to 1 decimal place
+      fat: Math.round((fat * qty) * 10) / 10,
+      carbs: Math.round((carbs * qty) * 10) / 10,
       quantity: qty,
       servingDescription: serving.serving_description,
       // Add source information to differentiate between local and API foods
@@ -673,20 +784,31 @@ const Nutrition = () => {
     };
     
     try {
-      const userId = user ? user.uid : null;
-      const success = await consumedFoodService.addConsumedFood(foodItem, userId);
+      // Close the modal first to avoid UI blocking
+      resetFoodDetailsModal();
       
-      if (success) {
-        // Reload today's foods and update nutrition
-        loadTodaysFoods();
-        
-        // Reset modal
-        resetFoodDetailsModal();
-        
+      // Use NutritionContext's addFoodItem for better integration with macronutrient tracking
+      const result = await addFoodItem(foodItem);
+      
+      if (result.success) {
+        // Show success message
         Alert.alert(
           "Food Added",
-          `Added ${qty} ${serving.serving_description}(s) of ${selectedFoodDetails.food_name} (${foodItem.calories} calories)`
+          `Added ${qty} ${serving.serving_description}(s) of ${selectedFoodDetails.food_name} (${foodItem.calories} calories)`,
+          [
+            { 
+              text: "OK", 
+              onPress: () => {
+                // Reload today's foods after alert is dismissed
+                setTimeout(() => {
+                  loadTodaysFoods();
+                }, 100);
+              }
+            }
+          ]
         );
+      } else {
+        throw new Error(result.error || 'Failed to add food');
       }
     } catch (error) {
       console.error('Error adding food:', error);
@@ -701,7 +823,18 @@ const Nutrition = () => {
       const success = await consumedFoodService.removeConsumedFood(index, userId);
       
       if (success) {
-        // Reload today's foods and update nutrition
+        // Get the updated totals
+        const todaysTotals = await consumedFoodService.getTodaysTotals(userId);
+        
+        // Update all nutrient values in context
+        updateNutrientIntake(
+          todaysTotals.calories || 0,
+          todaysTotals.protein || 0,
+          todaysTotals.carbs || 0,
+          todaysTotals.fat || 0
+        );
+        
+        // Reload today's foods list
         loadTodaysFoods();
         Alert.alert("Success", "Food item removed from your log.");
       }
@@ -780,22 +913,110 @@ const Nutrition = () => {
               <Text style={styles.calorieTitle}>Today's Calories</Text>
               <View style={styles.calorieValues}>
                 <Text style={styles.calorieConsumed}>{Math.round(caloriesConsumed)}</Text>
-                <Text style={styles.calorieTarget}> / {TARGET_CALORIES}</Text>
+                <Text style={styles.calorieTarget}> / {calorieTarget}</Text>
               </View>
             </View>
             <View style={styles.circleProgressContainer}>
-              <View style={styles.circleProgress}>
-                <Text style={styles.percentageText}>{nutritionPercentage}%</Text>
+              <View style={[
+                styles.circleProgress, 
+                { borderColor: getOverallPercentageColor(nutritionPercentage) }
+              ]}>
+                <Text style={[
+                  styles.percentageText, 
+                  { color: getOverallPercentageColor(nutritionPercentage) }
+                ]}>
+                  {nutritionPercentage}%
+                </Text>
               </View>
             </View>
           </View>
+          <View style={styles.overallInfoContainer}>
+            <Ionicons name="information-circle-outline" size={16} color="#757575" style={styles.infoIcon} />
+            <Text style={styles.overallInfoText}>
+              Overall progress shows average completion of protein, carbs, and fat goals
+            </Text>
+          </View>
           <View style={styles.progressBarContainer}>
             <ProgressBar 
-              progress={Math.min(1, caloriesConsumed / TARGET_CALORIES)} 
-              color={COLORS.primary}
+              progress={Math.min(1, nutritionPercentage / 100)} 
+              color={getOverallPercentageColor(nutritionPercentage)}
               trackColor="#E0E0E0"
               height={10}
             />
+          </View>
+          
+          {/* Macronutrient progress bars */}
+          <View style={styles.macroContainer}>
+            <View style={styles.macroHeaderContainer}>
+              <Text style={styles.macroTitle}>Daily Nutrient Goals</Text>
+              <View style={styles.macroTitleUnderline} />
+            </View>
+            
+            {/* Protein */}
+            <View style={styles.macroItem}>
+              <View style={styles.macroLabelContainer}>
+                <View style={styles.macroLabelGroup}>
+                  <View style={[styles.macroIndicator, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={styles.macroLabel}>Protein</Text>
+                </View>
+                <Text style={styles.macroValue}>{Math.round(proteinConsumed)}g / {proteinTarget}g</Text>
+              </View>
+              <View style={styles.macroProgressContainer}>
+                <View style={styles.macroProgressBarContainer}>
+                  <ProgressBar 
+                    progress={Math.min(1, proteinConsumed / proteinTarget)} 
+                    color="#4CAF50" 
+                    trackColor="#E9F5EA"
+                    height={12}
+                  />
+                </View>
+                <Text style={styles.macroPercentage}>{proteinPercentage}%</Text>
+              </View>
+            </View>
+            
+            {/* Carbs */}
+            <View style={styles.macroItem}>
+              <View style={styles.macroLabelContainer}>
+                <View style={styles.macroLabelGroup}>
+                  <View style={[styles.macroIndicator, { backgroundColor: '#2196F3' }]} />
+                  <Text style={styles.macroLabel}>Carbs</Text>
+                </View>
+                <Text style={styles.macroValue}>{Math.round(carbsConsumed)}g / {carbsTarget}g</Text>
+              </View>
+              <View style={styles.macroProgressContainer}>
+                <View style={styles.macroProgressBarContainer}>
+                  <ProgressBar 
+                    progress={Math.min(1, carbsConsumed / carbsTarget)} 
+                    color="#2196F3" 
+                    trackColor="#E3F2FD"
+                    height={12}
+                  />
+                </View>
+                <Text style={styles.macroPercentage}>{carbsPercentage}%</Text>
+              </View>
+            </View>
+            
+            {/* Fat */}
+            <View style={styles.macroItem}>
+              <View style={styles.macroLabelContainer}>
+                <View style={styles.macroLabelGroup}>
+                  <View style={[styles.macroIndicator, { backgroundColor: '#FF9800' }]} />
+                  <Text style={styles.macroLabel}>Fat</Text>
+                </View>
+                <Text style={styles.macroValue}>{Math.round(fatConsumed)}g / {fatTarget}g</Text>
+              </View>
+              <View style={styles.macroProgressContainer}>
+                <View style={styles.macroProgressBarContainer}>
+                  <ProgressBar 
+                    progress={Math.min(1, fatConsumed / fatTarget)} 
+                    color="#FF9800" 
+                    trackColor="#FFF3E0"
+                    height={12}
+                  />
+                </View>
+                <Text style={styles.macroPercentage}>{fatPercentage}%</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -859,7 +1080,15 @@ const Nutrition = () => {
 
         {/* Today's Foods */}
         <View style={styles.todaysFoodsCard}>
-          <Text style={styles.sectionTitle}>Today's Foods</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today's Foods</Text>
+            <TouchableOpacity 
+              onPress={onRefresh}
+              style={styles.refreshButton}
+            >
+              <Ionicons name="refresh" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={COLORS.primary} />
@@ -876,6 +1105,12 @@ const Nutrition = () => {
               style={styles.todaysFoodsList}
               nestedScrollEnabled={true}
               contentContainerStyle={styles.todaysFoodsListContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                />
+              }
             >
               {todaysFoods.map((item, index) => (
                 <View key={`consumed-${index}`} style={styles.consumedFoodItem}>
@@ -943,7 +1178,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 20,
+    padding: 22,
     marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1306,6 +1541,109 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888',
     marginTop: 4,
+  },
+  macroContainer: {
+    marginTop: 28,
+    paddingTop: 22,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+  },
+  macroHeaderContainer: {
+    marginBottom: 20,
+  },
+  macroTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
+    letterSpacing: 0.3,
+    marginBottom: 8,
+  },
+  macroTitleUnderline: {
+    height: 2,
+    backgroundColor: '#EEEEEE',
+    width: '100%',
+    marginTop: 4,
+  },
+  macroItem: {
+    marginBottom: 16,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  macroLabelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  macroLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  macroLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#505050',
+  },
+  macroValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '700',
+  },
+  macroProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  macroProgressBarContainer: {
+    flex: 1,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E0E0E0',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  macroPercentage: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#505050',
+    width: 40,
+    textAlign: 'right',
+  },
+  macroIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  overallInfoContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overallInfoText: {
+    fontSize: 13,
+    color: '#757575',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  infoIcon: {
+    marginRight: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  refreshButton: {
+    padding: 8,
   },
 });
 
