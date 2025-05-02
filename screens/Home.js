@@ -13,6 +13,7 @@ import { useSteps } from '../context/StepsContext';
 import { useWorkout } from '../context/WorkoutContext';
 import { useNutrition } from '../context/NutritionContext';
 import { useSleep } from '../context/SleepContext';
+import { useMentalHealth } from '../context/MentalHealthContext';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -25,7 +26,8 @@ const MetricCard = React.memo(({
   dark,
   value,
   onUpdate,
-  navigation
+  navigation,
+  needsAttention
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
@@ -68,7 +70,9 @@ const MetricCard = React.memo(({
     <TouchableOpacity 
       style={[styles.metricCard, {
         backgroundColor: dark ? COLORS.dark2 : COLORS.white,
-        shadowColor: dark ? COLORS.white : COLORS.gray
+        shadowColor: dark ? COLORS.white : COLORS.gray,
+        borderColor: needsAttention ? color : COLORS.grayscale100,
+        borderWidth: needsAttention ? 2 : 1,
       }]}
       onPress={handlePress}
       activeOpacity={0.7}
@@ -81,6 +85,9 @@ const MetricCard = React.memo(({
         <Text style={[styles.metricLabel, { color: dark ? COLORS.white : COLORS.greyscale900 }]}>
           {label}
         </Text>
+        {needsAttention && (
+          <View style={[styles.notificationDot, { backgroundColor: color }]}></View>
+        )}
       </View>
       <View style={styles.metricValueContainer}>
         <TextInput
@@ -109,6 +116,11 @@ const MetricCard = React.memo(({
           }]} />
         </View>
       )}
+      {needsAttention && (
+        <Text style={[styles.attentionText, { color: color }]}>
+          {metric === 'mental' ? 'Daily check-in needed' : ''}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 });
@@ -120,18 +132,18 @@ const Home = ({ navigation }) => {
   const { workoutPercentage, updateWorkoutPercentage } = useWorkout();
   const { nutritionPercentage, updateNutritionPercentage } = useNutrition();
   const { sleepQualityPercentage, updateSleepQualityPercentage } = useSleep();
+  const { mentalHealthPercentage, mentalHealthStatus, needsNewAssessment } = useMentalHealth();
   const { user } = useAuth();
   const [healthMetrics, setHealthMetrics] = useState({
-    mental: 0,
     bloodPressure: '120/80'
   });
   const [forceRender, setForceRender] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage, 'nutrition:', nutritionPercentage, 'sleep:', sleepQualityPercentage);
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage, 'nutrition:', nutritionPercentage, 'sleep:', sleepQualityPercentage, 'mental health:', mentalHealthPercentage);
       setForceRender(prev => prev + 1);
-    }, [waterIntake, percentage, steps, workoutPercentage, nutritionPercentage, sleepQualityPercentage])
+    }, [waterIntake, percentage, steps, workoutPercentage, nutritionPercentage, sleepQualityPercentage, mentalHealthPercentage])
   );
 
   // Calculate steps percentage (similar to water intake percentage)
@@ -152,7 +164,7 @@ const Home = ({ navigation }) => {
     (nutritionPercentage * weights.nutrition) +
     (workoutPercentage * weights.workout) +
     (percentage * weights.water) +
-    (healthMetrics.mental * weights.mental) +
+    (mentalHealthPercentage * weights.mental) +
     (sleepQualityPercentage * weights.sleep) +
     (stepsPercentage * weights.steps)
   );
@@ -191,6 +203,10 @@ const Home = ({ navigation }) => {
     let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
+      setHealthMetrics(prev => ({
+        ...prev,
+        [metric]: processedValue
+      }));
     } else {
       processedValue = Math.min(100, Math.max(0, parseInt(value) || 0));
     }
@@ -344,9 +360,10 @@ const Home = ({ navigation }) => {
           unit="%"
           color="#8338EC"
           dark={dark}
-          value={healthMetrics.mental}
+          value={mentalHealthPercentage}
           onUpdate={updateMetric}
           navigation={navigation}
+          needsAttention={needsNewAssessment}
         />
         <MetricCard
           icon={icons.sleep}
@@ -663,6 +680,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    position: 'relative',
   },
   metricIcon: {
     width: 24,
@@ -774,6 +792,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray,
     textAlign: 'center',
+  },
+  notificationDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#8338EC',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  attentionText: {
+    fontSize: 11,
+    fontFamily: 'medium',
+    color: '#8338EC',
+    marginTop: 5,
   },
 });
 
