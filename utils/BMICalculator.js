@@ -17,6 +17,13 @@ export const BMI_CATEGORIES = {
   SEVERELY_OBESE: 'severely_obese'
 };
 
+// Weight Goals
+export const WEIGHT_GOALS = {
+  LOSE: 'lose',
+  MAINTAIN: 'maintain',
+  GAIN: 'gain'
+};
+
 // BMI thresholds according to WHO guidelines
 const BMI_THRESHOLDS = {
   UNDERWEIGHT: 18.5,
@@ -90,12 +97,13 @@ export const calculateBMR = (weightKg, heightCm, age, gender) => {
 };
 
 /**
- * Calculate daily calorie needs based on BMR and activity level
+ * Calculate daily calorie needs based on BMR, activity level, and weight goal
  * @param {number} bmr Basal Metabolic Rate
  * @param {string} activityLevel Sedentary, Light, Moderate, Active, or Very Active
+ * @param {string} weightGoal 'lose', 'maintain', or 'gain'
  * @returns {number} Daily calorie needs
  */
-export const calculateDailyCalories = (bmr, activityLevel = 'moderate') => {
+export const calculateDailyCalories = (bmr, activityLevel = 'moderate', weightGoal = WEIGHT_GOALS.MAINTAIN) => {
   if (!bmr || bmr <= 0) {
     return 0;
   }
@@ -111,16 +119,32 @@ export const calculateDailyCalories = (bmr, activityLevel = 'moderate') => {
   
   const multiplier = activityMultipliers[activityLevel.toLowerCase()] || activityMultipliers.moderate;
   
-  return Math.round(bmr * multiplier);
+  // Calculate maintenance calories
+  const maintenanceCalories = Math.round(bmr * multiplier);
+  
+  // Adjust based on weight goal
+  switch (weightGoal) {
+    case WEIGHT_GOALS.LOSE:
+      // For weight loss, reduce by 20% (moderate deficit)
+      return Math.round(maintenanceCalories * 0.8);
+    case WEIGHT_GOALS.GAIN:
+      // For weight gain, increase by 15% (moderate surplus)
+      return Math.round(maintenanceCalories * 1.15);
+    case WEIGHT_GOALS.MAINTAIN:
+    default:
+      // For maintenance, use calculated value
+      return maintenanceCalories;
+  }
 };
 
 /**
- * Calculate daily nutrient goals based on calorie needs and BMI category
+ * Calculate daily nutrient goals based on calorie needs, BMI category, and weight goal
  * @param {number} dailyCalories Daily calorie needs
  * @param {string} bmiCategory BMI category (underweight, normal, overweight, obese, severely_obese)
+ * @param {string} weightGoal 'lose', 'maintain', or 'gain'
  * @returns {Object} Protein, carbs, and fat goals in grams
  */
-export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
+export const calculateNutrientGoals = (dailyCalories, bmiCategory, weightGoal = WEIGHT_GOALS.MAINTAIN) => {
   if (!dailyCalories || dailyCalories <= 0) {
     return { protein: 0, carbs: 0, fat: 0 };
   }
@@ -130,7 +154,7 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
   let carbPercentage = 0.5; // 50% of calories from carbs
   let fatPercentage = 0.3; // 30% of calories from fat
   
-  // Adjust macronutrient distribution based on BMI category
+  // First adjust based on BMI category
   switch (bmiCategory) {
     case BMI_CATEGORIES.UNDERWEIGHT:
       // Higher calories, more protein to build muscle
@@ -166,6 +190,28 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
       break;
   }
   
+  // Further adjust based on weight goal
+  switch (weightGoal) {
+    case WEIGHT_GOALS.LOSE:
+      // For weight loss, increase protein to preserve muscle, decrease carbs
+      proteinPercentage += 0.05; // Add 5%
+      carbPercentage -= 0.05; // Reduce by 5%
+      break;
+      
+    case WEIGHT_GOALS.GAIN:
+      // For weight gain, increase carbs to fuel muscle growth
+      if (bmiCategory !== BMI_CATEGORIES.UNDERWEIGHT) {
+        carbPercentage += 0.05; // Add 5%
+        fatPercentage -= 0.05; // Reduce by 5%
+      }
+      break;
+      
+    case WEIGHT_GOALS.MAINTAIN:
+    default:
+      // No additional adjustments for maintenance
+      break;
+  }
+  
   // Calculate grams of each macronutrient
   // Protein: 4 calories per gram
   // Carbs: 4 calories per gram
@@ -192,76 +238,109 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
  * @param {number} age Age in years
  * @param {string} gender 'male' or 'female'
  * @param {string} activityLevel Activity level (sedentary, light, moderate, active, very_active)
+ * @param {string} weightGoal Weight goal (lose, maintain, gain)
  * @returns {Object} Nutrition plan with BMI, category, calories, and nutrient goals
  */
-export const getNutritionPlan = (weightKg, heightCm, age, gender, activityLevel = 'moderate') => {
+export const getNutritionPlan = (weightKg, heightCm, age, gender, activityLevel = 'moderate', weightGoal = WEIGHT_GOALS.MAINTAIN) => {
   // Calculate BMI
   const bmi = calculateBMI(weightKg, heightCm);
   const bmiCategory = getBMICategory(bmi);
   
   // Calculate BMR and daily calorie needs
   const bmr = calculateBMR(weightKg, heightCm, age, gender);
-  const dailyCalories = calculateDailyCalories(bmr, activityLevel);
+  const dailyCalories = calculateDailyCalories(bmr, activityLevel, weightGoal);
   
   // Calculate nutrient goals
-  const nutrientGoals = calculateNutrientGoals(dailyCalories, bmiCategory);
+  const nutrientGoals = calculateNutrientGoals(dailyCalories, bmiCategory, weightGoal);
   
   return {
     bmi,
     bmiCategory,
     bmr,
     dailyCalories,
-    nutrientGoals
+    nutrientGoals,
+    weightGoal
   };
+};
+
+/**
+ * Get recommended weight goal based on BMI
+ * @param {number} bmi BMI value
+ * @returns {string} Recommended weight goal (lose, maintain, gain)
+ */
+export const getRecommendedWeightGoal = (bmi) => {
+  if (bmi < BMI_THRESHOLDS.UNDERWEIGHT) {
+    return WEIGHT_GOALS.GAIN;
+  } else if (bmi <= BMI_THRESHOLDS.NORMAL_MAX) {
+    return WEIGHT_GOALS.MAINTAIN;
+  } else {
+    return WEIGHT_GOALS.LOSE;
+  }
 };
 
 /**
  * Get BMI status description and nutrition advice
  * @param {string} bmiCategory BMI category
+ * @param {string} weightGoal Weight goal (lose, maintain, gain)
  * @returns {Object} Status description and advice
  */
-export const getBMIStatusInfo = (bmiCategory) => {
-  switch (bmiCategory) {
-    case BMI_CATEGORIES.UNDERWEIGHT:
-      return {
-        status: 'Underweight',
-        description: 'Your BMI suggests you are underweight. This may indicate insufficient nutrients for optimal health.',
-        advice: 'Focus on increasing calorie intake with nutrient-dense foods. Include healthy fats, proteins, and complex carbohydrates. Consider consulting with a healthcare provider.'
-      };
-      
-    case BMI_CATEGORIES.NORMAL:
-      return {
-        status: 'Normal',
-        description: 'Your BMI is within the normal/healthy range. This generally indicates a good balance of body weight to height.',
-        advice: 'Maintain your healthy weight with a balanced diet and regular physical activity. Focus on nutrient-dense foods from all food groups.'
-      };
-      
-    case BMI_CATEGORIES.OVERWEIGHT:
-      return {
-        status: 'Overweight',
-        description: 'Your BMI suggests you are overweight. This may increase risk for certain health conditions.',
-        advice: 'Consider moderate calorie reduction and increased physical activity. Focus on whole foods, lean proteins, and plenty of vegetables.'
-      };
-      
-    case BMI_CATEGORIES.OBESE:
-      return {
-        status: 'Obese',
-        description: 'Your BMI indicates obesity. This increases risk for many health conditions including heart disease and diabetes.',
-        advice: 'Consider working with healthcare professionals to develop a weight management plan. Focus on gradual, sustainable lifestyle changes.'
-      };
-      
-    case BMI_CATEGORIES.SEVERELY_OBESE:
-      return {
-        status: 'Severely Obese',
-        description: 'Your BMI indicates severe obesity. This significantly increases health risks.',
-        advice: 'Strongly consider consulting with healthcare professionals for tailored advice. Medically supervised weight loss may be recommended.'
-      };
-      
-    default:
-      return {
-        status: 'Unknown',
-        description: 'Unable to determine BMI category.',
-        advice: 'Please consult with a healthcare professional for personalized advice.'
-      };
+export const getBMIStatusInfo = (bmiCategory, weightGoal = WEIGHT_GOALS.MAINTAIN) => {
+  const baseInfo = {
+    [BMI_CATEGORIES.UNDERWEIGHT]: {
+      status: 'Underweight',
+      description: 'Your BMI suggests you are underweight. This may indicate insufficient nutrients for optimal health.',
+      advice: 'Focus on increasing calorie intake with nutrient-dense foods. Include healthy fats, proteins, and complex carbohydrates. Consider consulting with a healthcare provider.'
+    },
+    [BMI_CATEGORIES.NORMAL]: {
+      status: 'Normal',
+      description: 'Your BMI is within the normal/healthy range. This generally indicates a good balance of body weight to height.',
+      advice: 'Maintain your healthy weight with a balanced diet and regular physical activity. Focus on nutrient-dense foods from all food groups.'
+    },
+    [BMI_CATEGORIES.OVERWEIGHT]: {
+      status: 'Overweight',
+      description: 'Your BMI suggests you are overweight. This may increase risk for certain health conditions.',
+      advice: 'Consider moderate calorie reduction and increased physical activity. Focus on whole foods, lean proteins, and plenty of vegetables.'
+    },
+    [BMI_CATEGORIES.OBESE]: {
+      status: 'Obese',
+      description: 'Your BMI indicates obesity. This increases risk for many health conditions including heart disease and diabetes.',
+      advice: 'Consider working with healthcare professionals to develop a weight management plan. Focus on gradual, sustainable lifestyle changes.'
+    },
+    [BMI_CATEGORIES.SEVERELY_OBESE]: {
+      status: 'Severely Obese',
+      description: 'Your BMI indicates severe obesity. This significantly increases health risks.',
+      advice: 'Strongly consider consulting with healthcare professionals for tailored advice. Medically supervised weight loss may be recommended.'
+    }
+  };
+
+  const defaultInfo = {
+    status: 'Unknown',
+    description: 'Unable to determine BMI category.',
+    advice: 'Please consult with a healthcare professional for personalized advice.'
+  };
+
+  // Get base info for the BMI category
+  const info = baseInfo[bmiCategory] || defaultInfo;
+  
+  // Add goal-specific advice
+  let goalAdvice = '';
+  switch (weightGoal) {
+    case WEIGHT_GOALS.LOSE:
+      goalAdvice = 'For your weight loss goal, focus on a moderate calorie deficit, higher protein intake, and regular exercise. Aim for 0.5-1kg weight loss per week.';
+      break;
+    case WEIGHT_GOALS.GAIN:
+      goalAdvice = 'For your weight gain goal, focus on a moderate calorie surplus with adequate protein to support muscle growth. Consider strength training to build lean mass.';
+      break;
+    case WEIGHT_GOALS.MAINTAIN:
+      goalAdvice = 'For your weight maintenance goal, focus on balancing calorie intake with physical activity. Regular monitoring can help you stay on track.';
+      break;
   }
+  
+  // Return combined advice
+  return {
+    status: info.status,
+    description: info.description,
+    advice: info.advice,
+    goalAdvice: goalAdvice
+  };
 }; 

@@ -27,13 +27,14 @@ import RBSheet from 'react-native-raw-bottom-sheet'
 import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
 import { logout, updateUserProfile } from '../firebase/auth'
-import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan } from '../utils/BMICalculator'
+import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan, WEIGHT_GOALS, getRecommendedWeightGoal } from '../utils/BMICalculator'
 import { useNutrition } from '../context/NutritionContext'
 
 const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
     const genderSheet = useRef()
     const activitySheet = useRef()
+    const weightGoalSheet = useRef()
     const { dark, colors, setScheme } = useTheme()
     const { user, userData, saveHealthData, profileImage, updateProfileImage } = useAuth()
     const { nutritionPlan } = useNutrition()
@@ -56,14 +57,14 @@ const Profile = ({ navigation }) => {
     const [age, setAge] = useState('')
     const [weight, setWeight] = useState('')
     const [height, setHeight] = useState('')
-    const [bloodPressure, setBloodPressure] = useState('')
+    const [weightGoal, setWeightGoal] = useState(WEIGHT_GOALS.MAINTAIN)
     
     // BMI calculation 
     const bmi = weight && height 
         ? calculateBMI(parseFloat(weight), parseFloat(height))
         : 0;
     const bmiCategory = getBMICategory(bmi);
-    const bmiInfo = getBMIStatusInfo(bmiCategory);
+    const bmiInfo = getBMIStatusInfo(bmiCategory, weightGoal);
     
     // Activity level options
     const activityLevels = [
@@ -73,6 +74,19 @@ const Profile = ({ navigation }) => {
         { value: 'Active', description: 'Heavy exercise 6-7 days/week' },
         { value: 'Very Active', description: 'Very heavy exercise, physical job or training twice a day' },
     ];
+    
+    // Weight goal options
+    const weightGoalOptions = [
+        { value: WEIGHT_GOALS.LOSE, label: 'Lose Weight', description: 'Reduce calorie intake for healthy weight loss' },
+        { value: WEIGHT_GOALS.MAINTAIN, label: 'Maintain Weight', description: 'Balance calories to maintain current weight' },
+        { value: WEIGHT_GOALS.GAIN, label: 'Gain Weight', description: 'Increase calorie intake for healthy weight gain' },
+    ];
+    
+    // Get weight goal label for display
+    const getWeightGoalLabel = (goalValue) => {
+        const option = weightGoalOptions.find(option => option.value === goalValue);
+        return option ? option.label : 'Select Goal';
+    };
 
     // Handle dark mode toggle
     const toggleDarkMode = () => {
@@ -121,10 +135,10 @@ const Profile = ({ navigation }) => {
             setAge(userData.age?.toString() || '')
             setWeight(userData.weight?.toString() || '')
             setHeight(userData.height?.toString() || '')
-            setBloodPressure(userData.bloodPressure || '')
             
             setGender(userData.gender || 'Male')
             setActivityLevel(userData.activityLevel || 'Moderate')
+            setWeightGoal(userData.weightGoal || WEIGHT_GOALS.MAINTAIN)
             
             // If we have fullName in userData but display name is 'User', update it
             if (userData.fullName && (!user.displayName || user.displayName === 'User')) {
@@ -144,6 +158,14 @@ const Profile = ({ navigation }) => {
             setUserImage({ uri: profileImage })
         }
     }, [user, userData, profileImage])
+    
+    // Set recommended weight goal when BMI changes
+    useEffect(() => {
+        if (bmi > 0 && !userData?.weightGoal) {
+            const recommended = getRecommendedWeightGoal(bmi);
+            setWeightGoal(recommended);
+        }
+    }, [bmi, userData]);
 
     /**
      * Logout handler
@@ -186,10 +208,10 @@ const Profile = ({ navigation }) => {
             const healthData = {
                 weight: weight ? parseFloat(weight) : null,
                 height: height ? parseFloat(height) : null,
-                bloodPressure: bloodPressure,
                 age: age ? parseInt(age) : null,
                 gender,
                 activityLevel,
+                weightGoal,
             }
             
             const result = await saveHealthData(healthData)
@@ -440,6 +462,18 @@ const Profile = ({ navigation }) => {
     
     // Render BMI Information Modal
     const renderBmiInfoModal = () => {
+        // Calculate nutrition plan with the selected weight goal
+        const userNutritionPlan = weight && height && age 
+            ? getNutritionPlan(
+                parseFloat(weight), 
+                parseFloat(height), 
+                parseInt(age), 
+                gender.toLowerCase(), 
+                activityLevel.toLowerCase(),
+                weightGoal
+              )
+            : nutritionPlan; // Fall back to global nutrition plan if can't calculate
+            
         return (
             <Modal
                 visible={showBmiInfo}
@@ -468,28 +502,37 @@ const Profile = ({ navigation }) => {
                             {bmiInfo.description}
                         </Text>
                         
+                        <View style={styles.goalContainer}>
+                            <Text style={[styles.goalLabel, {color: dark ? COLORS.white : COLORS.black}]}>
+                                Your Goal: <Text style={styles.goalValue}>{getWeightGoalLabel(weightGoal)}</Text>
+                            </Text>
+                            <Text style={[styles.goalAdvice, {color: dark ? COLORS.white : COLORS.black}]}>
+                                {bmiInfo.goalAdvice}
+                            </Text>
+                        </View>
+                        
                         <View style={styles.nutritionPlanContainer}>
                             <Text style={[styles.nutritionTitle, {color: dark ? COLORS.white : COLORS.black}]}>
                                 Daily Nutrition Goals:
                             </Text>
                             
-                            {nutritionPlan ? (
+                            {userNutritionPlan ? (
                                 <View style={styles.nutrientGoalsContainer}>
                                     <View style={styles.nutrientItem}>
                                         <Text style={styles.nutrientLabel}>Calories:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.dailyCalories} kcal</Text>
+                                        <Text style={styles.nutrientValue}>{userNutritionPlan.dailyCalories} kcal</Text>
                                     </View>
                                     <View style={styles.nutrientItem}>
                                         <Text style={styles.nutrientLabel}>Protein:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.protein}g</Text>
+                                        <Text style={styles.nutrientValue}>{userNutritionPlan.nutrientGoals.protein}g</Text>
                                     </View>
                                     <View style={styles.nutrientItem}>
                                         <Text style={styles.nutrientLabel}>Carbs:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.carbs}g</Text>
+                                        <Text style={styles.nutrientValue}>{userNutritionPlan.nutrientGoals.carbs}g</Text>
                                     </View>
                                     <View style={styles.nutrientItem}>
                                         <Text style={styles.nutrientLabel}>Fat:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.fat}g</Text>
+                                        <Text style={styles.nutrientValue}>{userNutritionPlan.nutrientGoals.fat}g</Text>
                                     </View>
                                 </View>
                             ) : (
@@ -614,6 +657,50 @@ const Profile = ({ navigation }) => {
                             </Text>
                             <Text style={styles.sheetOptionDescription}>
                                 {level.description}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </RNScrollView>
+            </RBSheet>
+        );
+    };
+    
+    // Weight goal selection sheet
+    const renderWeightGoalSheet = () => {
+        return (
+            <RBSheet
+                ref={weightGoalSheet}
+                closeOnDragDown={true}
+                closeOnPressMask={true}
+                height={300}
+                customStyles={{
+                    wrapper: { backgroundColor: 'rgba(0,0,0,0.5)' },
+                    draggableIcon: { backgroundColor: dark ? COLORS.gray2 : COLORS.grayscale200 },
+                    container: {
+                        borderTopRightRadius: 20, 
+                        borderTopLeftRadius: 20,
+                        backgroundColor: dark ? COLORS.dark2 : COLORS.white
+                    }
+                }}
+            >
+                <RNScrollView>
+                    <Text style={[styles.sheetTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                        Select Weight Goal
+                    </Text>
+                    {weightGoalOptions.map((option, index) => (
+                        <TouchableOpacity 
+                            key={index}
+                            style={[styles.sheetOption, weightGoal === option.value && styles.selectedOption]}
+                            onPress={() => {
+                                setWeightGoal(option.value);
+                                weightGoalSheet.current.close();
+                            }}
+                        >
+                            <Text style={[styles.sheetOptionText, weightGoal === option.value && styles.selectedOptionText]}>
+                                {option.label}
+                            </Text>
+                            <Text style={styles.sheetOptionDescription}>
+                                {option.description}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -819,7 +906,6 @@ const Profile = ({ navigation }) => {
     const ageInputRef = useRef(null);
     const weightInputRef = useRef(null);
     const heightInputRef = useRef(null);
-    const bpInputRef = useRef(null);
 
     // Render Android name edit modal
     const renderNameEditModal = () => {
@@ -968,24 +1054,16 @@ const Profile = ({ navigation }) => {
                         <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
                     </TouchableOpacity>
                     
-                    <Text style={styles.label}>Blood Pressure</Text>
-                    <TextInput
-                        ref={bpInputRef}
-                        style={{
-                            height: 50,
-                            borderColor: '#E0E0E0',
-                            borderWidth: 1,
-                            borderRadius: 8,
-                            paddingHorizontal: 15,
-                            backgroundColor: '#FFFFFF',
-                            fontSize: 16,
-                            marginBottom: 15,
-                            color: '#000000',
-                        }}
-                        defaultValue={bloodPressure}
-                        keyboardType="number-pad"
-                        onEndEditing={(e) => setBloodPressure(e.nativeEvent.text)}
-                    />
+                    <Text style={styles.label}>Weight Goal</Text>
+                    <TouchableOpacity 
+                        style={[styles.input, styles.selectInput, { backgroundColor: '#FFFFFF' }]}
+                        onPress={() => weightGoalSheet.current.open()}
+                    >
+                        <Text style={[styles.selectText, {color: dark ? COLORS.dark : COLORS.black}]}>
+                            {getWeightGoalLabel(weightGoal)}
+                        </Text>
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
+                    </TouchableOpacity>
                     
                     {bmi > 0 && (
                         <TouchableOpacity 
@@ -1030,6 +1108,7 @@ const Profile = ({ navigation }) => {
             
             {renderGenderSheet()}
             {renderActivitySheet()}
+            {renderWeightGoalSheet()}
             {renderBmiInfoModal()}
             {renderNameEditModal()}
             
@@ -1594,6 +1673,27 @@ const styles = StyleSheet.create({
         fontSize: 16,
         flex: 1,
         borderWidth: 0,
+    },
+    // Goal styles
+    goalContainer: {
+        marginVertical: 10,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#eee',
+    },
+    goalLabel: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    goalValue: {
+        color: COLORS.primary,
+    },
+    goalAdvice: {
+        fontSize: 14,
+        fontStyle: 'italic',
+        lineHeight: 20,
     },
 })
 
