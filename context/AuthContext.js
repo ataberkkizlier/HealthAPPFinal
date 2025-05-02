@@ -6,6 +6,7 @@ import { healthDataOperations } from '../firebase/healthData'
 import healthCategories from '../firebase/healthCategories'
 import { ref, get } from 'firebase/database'
 import { updateUserProfile } from '../firebase/auth'
+import * as FileSystem from 'expo-file-system'
 
 // Create Authentication Context
 export const AuthContext = createContext()
@@ -335,40 +336,92 @@ export const AuthProvider = ({ children }) => {
             if (!user) return { success: false, message: 'No user logged in' }
             
             console.log("Updating profile image for user:", user.uid, user.email);
+            console.log("Image URI:", imageUri);
+            
+            if (!imageUri) {
+                return { 
+                    success: false, 
+                    error: 'No valid image URI provided'
+                };
+            }
+            
+            // Try to get a small thumbnail of the image first to verify it's accessible
+            try {
+                console.log("Reading image as base64 to verify accessibility...");
+                // Just read a small amount to verify it's accessible
+                const readResult = await FileSystem.readAsStringAsync(imageUri, {
+                    encoding: FileSystem.EncodingType.Base64,
+                    length: 1024, // Just read a small sample
+                    position: 0
+                });
+                
+                if (!readResult) {
+                    console.error("Failed to read image data");
+                    return { 
+                        success: false, 
+                        error: 'Failed to read image data'
+                    };
+                }
+                
+                console.log("Successfully read image data sample:", readResult.substring(0, 20) + "...");
+            } catch (readError) {
+                console.error("Error reading image file:", readError);
+                return { 
+                    success: false, 
+                    error: `Cannot read the image file: ${readError.message}`
+                };
+            }
+            
+            // Get current display name or use a better default
+            const currentDisplayName = user.displayName || userData?.fullName || 'User';
             
             // First update Firebase Auth profile
-            const authResult = await updateUserProfile(user.displayName, imageUri);
+            console.log("Updating Firebase Auth profile with name:", currentDisplayName);
+            const authResult = await updateUserProfile(currentDisplayName, imageUri);
             if (!authResult.success) {
+                console.error("Auth profile update failed:", authResult.error);
                 return authResult;
             }
             
             // Then save the image in health data
+            console.log("Updating health data with new profile image...");
             const result = await healthDataOperations.updateHealthData(user.uid, {
                 profileImage: imageUri,
                 lastUpdated: Date.now()
             });
             
             if (result.success) {
+                console.log("Successfully updated profile image in database");
+                
                 // Update local state
                 setProfileImage(imageUri);
-                setUserData({
-                    ...userData,
+                setUserData(prevData => ({
+                    ...prevData,
                     profileImage: imageUri,
                     lastUpdated: Date.now()
-                });
+                }));
                 
                 // Store in AsyncStorage for offline access
                 try {
+                    console.log("Saving profile image to AsyncStorage...");
                     await AsyncStorage.setItem(`profileImage_${user.uid}`, imageUri);
+                    console.log("Successfully saved profile image to AsyncStorage");
                 } catch (storageError) {
                     console.error('Error storing profile image in AsyncStorage:', storageError);
+                    // This is non-critical, so continue
                 }
+                
+                return { success: true };
+            } else {
+                console.error("Failed to save profile image in health data:", result.error);
+                return result;
             }
-            
-            return result;
         } catch (error) {
             console.error('Error updating profile image:', error);
-            return { success: false, error: error.message };
+            return { 
+                success: false, 
+                error: error.message || 'Unknown error updating profile image'
+            };
         }
     }
 

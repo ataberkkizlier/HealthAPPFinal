@@ -18,5 +18,8 @@ defaultConfig.resolver.extraNodeModules = {
   'firebase': `${__dirname}/firebase`,
 };
 
+// Disable package exports to fix ws module issue in SDK 53
+defaultConfig.resolver.unstable_enablePackageExports = false;
+
 module.exports = defaultConfig;
 

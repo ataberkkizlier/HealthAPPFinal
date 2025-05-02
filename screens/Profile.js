@@ -26,7 +26,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import RBSheet from 'react-native-raw-bottom-sheet'
 import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
-import { logout } from '../firebase/auth'
+import { logout, updateUserProfile } from '../firebase/auth'
 import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan } from '../utils/BMICalculator'
 import { useNutrition } from '../context/NutritionContext'
 
@@ -47,6 +47,10 @@ const Profile = ({ navigation }) => {
     const [uploadingImage, setUploadingImage] = useState(false)
     const [showBmiInfo, setShowBmiInfo] = useState(false)
     const [isDarkMode, setIsDarkMode] = useState(false)
+    
+    // State for name edit modal (Android)
+    const [modalVisible, setModalVisible] = useState(false)
+    const [modalInput, setModalInput] = useState('')
     
     // Use separate state variables for each field
     const [age, setAge] = useState('')
@@ -121,6 +125,18 @@ const Profile = ({ navigation }) => {
             
             setGender(userData.gender || 'Male')
             setActivityLevel(userData.activityLevel || 'Moderate')
+            
+            // If we have fullName in userData but display name is 'User', update it
+            if (userData.fullName && (!user.displayName || user.displayName === 'User')) {
+                updateUserProfile(userData.fullName, user.photoURL)
+                    .then(result => {
+                        if (result.success) {
+                            setUserName(userData.fullName)
+                            console.log('Updated display name to:', userData.fullName)
+                        }
+                    })
+                    .catch(err => console.error('Failed to update display name:', err))
+            }
         }
         
         // Set profile image if available
@@ -249,34 +265,122 @@ const Profile = ({ navigation }) => {
         const pickImage = async () => {
             try {
                 setUploadingImage(true)
+                console.log("Starting image picker...");
+                
+                // Clear any previous image state to avoid stale references
+                setUserImage(null);
+                
                 const tempUri = await launchImagePicker()
+                console.log("Image picker result:", tempUri ? "Image selected" : "No image selected");
 
                 if (!tempUri) {
+                    console.log("No image was selected");
                     setUploadingImage(false)
+                    setUserImage(profileImage ? { uri: profileImage } : null);
                     return
                 }
 
+                console.log("Selected image URI:", tempUri);
+                
+                // Wait a moment before updating UI to ensure file operations are complete
+                // This helps on some Android devices
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
                 // Set the image locally for immediate UI update
                 setUserImage({ uri: tempUri })
 
+                // Let UI update complete before proceeding with Firebase upload
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 // Update profile image in Firebase and context
-                const result = await updateProfileImage(tempUri)
+                console.log("Calling updateProfileImage with URI:", tempUri);
                 
-                if (!result.success) {
-                    console.error('Failed to update profile image:', result.error)
-                    Alert.alert('Image Upload Failed', 'The image could not be uploaded. Please try again.')
-                } else {
-                    // Success feedback
-                    Alert.alert('Success', 'Your profile picture has been updated successfully!')
+                try {
+                    const result = await updateProfileImage(tempUri)
+                    
+                    if (!result.success) {
+                        console.error('Failed to update profile image:', result.error);
+                        
+                        // Show a more detailed error message
+                        Alert.alert(
+                            'Image Upload Failed', 
+                            `The image could not be uploaded: ${result.error || 'Unknown error'}. Please try again.`,
+                            [{ text: 'OK' }]
+                        );
+                        
+                        // Reset user image to previous state if the upload failed
+                        setUserImage(profileImage ? { uri: profileImage } : null);
+                    } else {
+                        // Success feedback
+                        Alert.alert('Success', 'Your profile picture has been updated successfully!')
+                    }
+                } catch (uploadError) {
+                    console.error('Error during profile image update:', uploadError);
+                    Alert.alert(
+                        'Upload Error', 
+                        `Failed to upload image: ${uploadError.message || 'Unknown error'}`
+                    );
+                    setUserImage(profileImage ? { uri: profileImage } : null);
                 }
                 
                 setUploadingImage(false)
             } catch (error) {
-                console.error('Error picking image:', error)
-                Alert.alert('Error', 'An error occurred while selecting an image')
+                console.error('Error in pickImage function:', error);
+                Alert.alert(
+                    'Error', 
+                    `An error occurred: ${error.message || 'Unknown error'}`,
+                    [{ text: 'OK' }]
+                );
+                setUserImage(profileImage ? { uri: profileImage } : null);
                 setUploadingImage(false)
             }
         }
+        
+        // Add name editing functionality
+        const editName = () => {
+            if (Platform.OS === 'ios') {
+                // Use native Alert.prompt on iOS
+                Alert.prompt(
+                    'Update Your Name',
+                    'Please enter your full name:',
+                    [
+                        {
+                            text: 'Cancel',
+                            style: 'cancel'
+                        },
+                        {
+                            text: 'Update',
+                            onPress: async (name) => updateNameHandler(name)
+                        }
+                    ],
+                    'plain-text',
+                    userName === 'User' ? '' : userName
+                );
+            } else {
+                // Custom modal for Android
+                setModalInput(userName === 'User' ? '' : userName);
+                setModalVisible(true);
+            }
+        };
+        
+        // Shared handler for name updates
+        const updateNameHandler = async (name) => {
+            if (name && name.trim()) {
+                try {
+                    // Update Firebase Auth profile
+                    const result = await updateUserProfile(name.trim(), user.photoURL);
+                    if (result.success) {
+                        setUserName(name.trim());
+                        Alert.alert('Success', 'Your name has been updated!');
+                    } else {
+                        Alert.alert('Update Failed', result.error || 'Failed to update your name');
+                    }
+                } catch (error) {
+                    console.error('Error updating name:', error);
+                    Alert.alert('Error', 'Failed to update your name');
+                }
+            }
+        };
         
         return (
             <View style={styles.profileContainer}>
@@ -303,18 +407,21 @@ const Profile = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                 </View>
-                <Text
-                    style={[
-                        styles.title,
-                        {
-                            color: dark
-                                ? COLORS.secondaryWhite
-                                : COLORS.greyscale900,
-                        },
-                    ]}
-                >
-                    {userName}
-                </Text>
+                <TouchableOpacity onPress={editName}>
+                    <Text
+                        style={[
+                            styles.title,
+                            {
+                                color: dark
+                                    ? COLORS.secondaryWhite
+                                    : COLORS.greyscale900,
+                            },
+                        ]}
+                    >
+                        {userName}
+                        {userName === 'User' && " (Tap to edit)"}
+                    </Text>
+                </TouchableOpacity>
                 <Text
                     style={[
                         styles.subtitle,
@@ -714,6 +821,61 @@ const Profile = ({ navigation }) => {
     const heightInputRef = useRef(null);
     const bpInputRef = useRef(null);
 
+    // Render Android name edit modal
+    const renderNameEditModal = () => {
+        return (
+            <Modal
+                visible={modalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                    <View style={styles.modalOverlay}>
+                        <TouchableWithoutFeedback>
+                            <View style={[styles.modalContainer, {backgroundColor: dark ? COLORS.dark2 : COLORS.white}]}>
+                                <Text style={[styles.modalTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                                    Update Your Name
+                                </Text>
+                                
+                                <TextInput
+                                    style={[styles.modalInput, {
+                                        color: dark ? COLORS.white : COLORS.black,
+                                        borderColor: dark ? COLORS.grey : COLORS.greyscale300
+                                    }]}
+                                    placeholder="Enter your full name"
+                                    placeholderTextColor={dark ? COLORS.grey : COLORS.greyscale500}
+                                    value={modalInput}
+                                    onChangeText={setModalInput}
+                                    autoCapitalize="words"
+                                />
+                                
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity 
+                                        style={[styles.modalButton, styles.cancelButton]}
+                                        onPress={() => setModalVisible(false)}
+                                    >
+                                        <Text style={styles.modalButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity 
+                                        style={styles.modalButton}
+                                        onPress={() => {
+                                            setModalVisible(false);
+                                            updateNameHandler(modalInput);
+                                        }}
+                                    >
+                                        <Text style={styles.modalButtonText}>Update</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+        );
+    };
+
     return (
         <View style={{flex: 1, backgroundColor: dark ? COLORS.dark2 : COLORS.white}}>
             <SafeAreaView style={{backgroundColor: dark ? COLORS.dark2 : COLORS.white}}>
@@ -869,6 +1031,7 @@ const Profile = ({ navigation }) => {
             {renderGenderSheet()}
             {renderActivitySheet()}
             {renderBmiInfoModal()}
+            {renderNameEditModal()}
             
             <RBSheet
                 ref={refRBSheet}
@@ -1273,28 +1436,53 @@ const styles = StyleSheet.create({
     // BMI info modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContainer: {
         width: '85%',
-        maxHeight: '80%',
         backgroundColor: COLORS.white,
-        borderRadius: 20,
+        borderRadius: 12,
         padding: 20,
-        alignItems: 'center',
+        elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-        elevation: 5,
     },
     modalTitle: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 20,
+        marginBottom: 15,
         textAlign: 'center',
+    },
+    modalInput: {
+        padding: 12,
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 10,
+        marginBottom: 15,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    modalButton: {
+        backgroundColor: COLORS.primary,
+        borderRadius: 10,
+        padding: 12,
+        alignItems: 'center',
+        flex: 0.48,
+    },
+    modalButtonText: {
+        color: COLORS.white,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    cancelButton: {
+        backgroundColor: COLORS.greyscale300,
     },
     bmiCircle: {
         width: 100,
@@ -1361,18 +1549,29 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         textAlign: 'center',
     },
-    modalButton: {
+    // Keyboard styles
+    keyboardDismissButton: {
+        position: 'absolute',
+        right: 20,
+        bottom: 30,
         backgroundColor: COLORS.primary,
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 25,
-        marginTop: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 999,
     },
-    modalButtonText: {
+    keyboardDismissText: {
         color: COLORS.white,
         fontSize: 16,
         fontWeight: 'bold',
     },
+    
+    // Input styles
     focusedInput: {
         borderColor: COLORS.primary,
         borderWidth: 2,
@@ -1395,26 +1594,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         flex: 1,
         borderWidth: 0,
-    },
-    keyboardDismissButton: {
-        position: 'absolute',
-        right: 20,
-        bottom: 30,
-        backgroundColor: COLORS.primary,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        zIndex: 999,
-    },
-    keyboardDismissText: {
-        color: COLORS.white,
-        fontSize: 16,
-        fontWeight: 'bold',
     },
 })
 
