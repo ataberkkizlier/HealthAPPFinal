@@ -112,6 +112,32 @@ export const WaterIntakeProvider = ({ children }) => {
         setWaterIntake(cappedAmount);
     };
 
+    const resetWaterIntake = async () => {
+        setWaterIntake(0);
+        console.log('Water intake reset to 0');
+        
+        // Clear AsyncStorage
+        try {
+            const storageKey = user ? `@waterIntake_${user.uid}` : '@waterIntake_guest';
+            await AsyncStorage.removeItem(storageKey);
+            
+            // If user is logged in, update Firebase too
+            if (user) {
+                try {
+                    await healthDataOperations.updateHealthData(user.uid, {
+                        waterIntake: 0,
+                        lastUpdated: Date.now()
+                    });
+                    console.log('Water intake reset in Firebase');
+                } catch (error) {
+                    console.error('Error resetting water intake in Firebase:', error);
+                }
+            }
+        } catch (e) {
+            console.error('Error clearing water intake from storage:', e);
+        }
+    };
+
     const percentage = Math.round((waterIntake / dailyGoal) * 100);
 
     return (
@@ -120,7 +146,8 @@ export const WaterIntakeProvider = ({ children }) => {
                 waterIntake,
                 percentage,
                 dailyGoal,
-                updateWaterIntake
+                updateWaterIntake,
+                resetWaterIntake
             }}
         >
             {children}

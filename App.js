@@ -15,6 +15,7 @@ import { SleepProvider } from './context/SleepContext';
 import { MentalHealthProvider } from './context/MentalHealthContext';
 import { auth } from './firebase/config';
 import fatSecretService from './services/FatSecretService';
+import HealthTracker from './utils/HealthTracker';
 
 // Firebase config import
 import './firebase/config';
@@ -61,7 +62,9 @@ export default function App() {
                 <MentalHealthProvider>
                   <ThemeProvider>
                     <SafeAreaProvider onLayout={onLayoutRootView}>
-                      <AppNavigation />
+                      <HealthTracker>
+                        <AppNavigation />
+                      </HealthTracker>
                     </SafeAreaProvider>
                   </ThemeProvider>
                 </MentalHealthProvider>

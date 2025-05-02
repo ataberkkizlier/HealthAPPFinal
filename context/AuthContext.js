@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { healthDataOperations } from '../firebase/healthData'
 import healthCategories from '../firebase/healthCategories'
 import { ref, get } from 'firebase/database'
+import { updateUserProfile } from '../firebase/auth'
 
 // Create Authentication Context
 export const AuthContext = createContext()
@@ -14,6 +15,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [userData, setUserData] = useState(null)
+    const [profileImage, setProfileImage] = useState(null)
 
     // Debug function to check database structure
     const debugUserData = async (uid) => {
@@ -327,6 +329,80 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Update user profile with image
+    const updateProfileImage = async (imageUri) => {
+        try {
+            if (!user) return { success: false, message: 'No user logged in' }
+            
+            console.log("Updating profile image for user:", user.uid, user.email);
+            
+            // First update Firebase Auth profile
+            const authResult = await updateUserProfile(user.displayName, imageUri);
+            if (!authResult.success) {
+                return authResult;
+            }
+            
+            // Then save the image in health data
+            const result = await healthDataOperations.updateHealthData(user.uid, {
+                profileImage: imageUri,
+                lastUpdated: Date.now()
+            });
+            
+            if (result.success) {
+                // Update local state
+                setProfileImage(imageUri);
+                setUserData({
+                    ...userData,
+                    profileImage: imageUri,
+                    lastUpdated: Date.now()
+                });
+                
+                // Store in AsyncStorage for offline access
+                try {
+                    await AsyncStorage.setItem(`profileImage_${user.uid}`, imageUri);
+                } catch (storageError) {
+                    console.error('Error storing profile image in AsyncStorage:', storageError);
+                }
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('Error updating profile image:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Load profile image if available
+    useEffect(() => {
+        const loadProfileImage = async () => {
+            if (!user) return;
+            
+            try {
+                // First check userData from Firebase
+                if (userData?.profileImage) {
+                    setProfileImage(userData.profileImage);
+                    return;
+                }
+                
+                // If not in userData, check user.photoURL from Firebase Auth
+                if (user.photoURL) {
+                    setProfileImage(user.photoURL);
+                    return;
+                }
+                
+                // Last resort, check AsyncStorage
+                const storedImage = await AsyncStorage.getItem(`profileImage_${user.uid}`);
+                if (storedImage) {
+                    setProfileImage(storedImage);
+                }
+            } catch (error) {
+                console.error('Error loading profile image:', error);
+            }
+        };
+        
+        loadProfileImage();
+    }, [user, userData]);
+
     // Auth context value
     const value = {
         user,
@@ -342,7 +418,9 @@ export const AuthProvider = ({ children }) => {
         steps,
         bloodPressure,
         debugUserData,
-        debugWaterIntake
+        debugWaterIntake,
+        profileImage,
+        updateProfileImage
     }
 
     return (

@@ -6,6 +6,8 @@ import {
     Image,
     Switch,
     TextInput,
+    Alert,
+    ActivityIndicator
 } from 'react-native'
 import React, { useState, useRef, useEffect } from 'react'
 import { COLORS, SIZES, icons, images } from '../constants'
@@ -23,13 +25,15 @@ import { logout } from '../firebase/auth'
 const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
     const { dark, colors, setScheme } = useTheme()
-    const { user, userData, saveHealthData } = useAuth()
+    const { user, userData, saveHealthData, profileImage, updateProfileImage } = useAuth()
     const [userName, setUserName] = useState('')
     const [userEmail, setUserEmail] = useState('')
     const [weight, setWeight] = useState('')
     const [height, setHeight] = useState('')
     const [bloodPressure, setBloodPressure] = useState('')
     const [loading, setLoading] = useState(false)
+    const [userImage, setUserImage] = useState(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
 
     useEffect(() => {
         if (user) {
@@ -41,7 +45,12 @@ const Profile = ({ navigation }) => {
             setHeight(userData.height?.toString() || '')
             setBloodPressure(userData.bloodPressure || '')
         }
-    }, [user, userData])
+        
+        // Set profile image if available
+        if (profileImage) {
+            setUserImage({ uri: profileImage })
+        }
+    }, [user, userData, profileImage])
 
     /**
      * Logout handler
@@ -142,36 +151,65 @@ const Profile = ({ navigation }) => {
      * Render User Profile
      */
     const renderProfile = () => {
-        const [image, setImage] = useState(images.user1)
+        // Use profileImage from context or default user image
+        const defaultImage = profileImage ? { uri: profileImage } : images.user1
 
         const pickImage = async () => {
             try {
+                setUploadingImage(true)
                 const tempUri = await launchImagePicker()
 
-                if (!tempUri) return
+                if (!tempUri) {
+                    setUploadingImage(false)
+                    return
+                }
 
-                // set the image
-                setImage({ uri: tempUri })
-            } catch (error) {}
+                // Set the image locally for immediate UI update
+                setUserImage({ uri: tempUri })
+
+                // Update profile image in Firebase and context
+                const result = await updateProfileImage(tempUri)
+                
+                if (!result.success) {
+                    console.error('Failed to update profile image:', result.error)
+                    Alert.alert('Image Upload Failed', 'The image could not be uploaded. Please try again.')
+                } else {
+                    // Success feedback
+                    Alert.alert('Success', 'Your profile picture has been updated successfully!')
+                }
+                
+                setUploadingImage(false)
+            } catch (error) {
+                console.error('Error picking image:', error)
+                Alert.alert('Error', 'An error occurred while selecting an image')
+                setUploadingImage(false)
+            }
         }
+        
         return (
             <View style={styles.profileContainer}>
-                <View>
+                <View style={styles.imageContainer}>
                     <Image
-                        source={image}
+                        source={userImage || defaultImage}
                         resizeMode="cover"
                         style={styles.avatar}
                     />
-                    <TouchableOpacity
-                        onPress={pickImage}
-                        style={styles.picContainer}
-                    >
-                        <MaterialIcons
-                            name="edit"
-                            size={16}
-                            color={COLORS.white}
-                        />
-                    </TouchableOpacity>
+                    {uploadingImage ? (
+                        <View style={styles.uploadingOverlay}>
+                            <ActivityIndicator size="large" color={COLORS.white} />
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={pickImage}
+                            style={styles.picContainer}
+                        >
+                            <MaterialIcons
+                                name="camera-alt"
+                                size={18}
+                                color={COLORS.white}
+                            />
+                        </TouchableOpacity>
+                    )}
                 </View>
                 <Text
                     style={[
@@ -401,28 +439,31 @@ const Profile = ({ navigation }) => {
                     
                     <Text style={styles.label}>Weight (kg)</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
                         value={weight}
                         onChangeText={setWeight}
                         placeholder="Enter your weight"
+                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
                         keyboardType="numeric"
                     />
                     
                     <Text style={styles.label}>Height (cm)</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
                         value={height}
                         onChangeText={setHeight}
                         placeholder="Enter your height"
+                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
                         keyboardType="numeric"
                     />
                     
                     <Text style={styles.label}>Blood Pressure</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: dark ? COLORS.dark2 : COLORS.white }]}
                         value={bloodPressure}
                         onChangeText={setBloodPressure}
                         placeholder="e.g. 120/80"
+                        placeholderTextColor={dark ? COLORS.gray : COLORS.greyscale400}
                     />
                     
                     <TouchableOpacity 
@@ -430,9 +471,11 @@ const Profile = ({ navigation }) => {
                         onPress={handleSaveProfile}
                         disabled={loading}
                     >
-                        <Text style={styles.buttonText}>
-                            {loading ? 'Saving...' : 'Save Profile'}
-                        </Text>
+                        {loading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                            <Text style={styles.buttonText}>Save Profile</Text>
+                        )}
                     </TouchableOpacity>
                     
                     {userData && userData.lastUpdated && (
@@ -562,32 +605,58 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.4,
         paddingVertical: 20,
     },
+    imageContainer: {
+        position: 'relative',
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        elevation: 10,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+    },
     avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 999,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        borderWidth: 3,
+        borderColor: COLORS.white,
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     picContainer: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: COLORS.primary,
         position: 'absolute',
-        right: 0,
-        bottom: 12,
+        right: 5,
+        bottom: 5,
+        borderWidth: 2,
+        borderColor: COLORS.white,
     },
     title: {
-        fontSize: 18,
+        fontSize: 20,
         fontFamily: 'bold',
         color: COLORS.greyscale900,
-        marginTop: 12,
+        marginTop: 16,
     },
     subtitle: {
         fontSize: 16,
         color: COLORS.greyscale900,
-        fontFamily: 'medium',
+        fontFamily: 'regular',
         marginTop: 4,
     },
     settingsContainer: {
@@ -686,8 +755,8 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 16,
         fontWeight: '600',
-        marginTop: 10,
-        marginBottom: 5,
+        marginTop: 16,
+        marginBottom: 8,
     },
     value: {
         fontSize: 16,
@@ -697,17 +766,24 @@ const styles = StyleSheet.create({
     input: {
         borderWidth: 1,
         borderColor: '#ddd',
-        borderRadius: 5,
-        padding: 10,
+        borderRadius: 10,
+        padding: 12,
         fontSize: 16,
         marginBottom: 15,
     },
     button: {
-        backgroundColor: '#007BFF',
+        backgroundColor: COLORS.primary,
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         alignItems: 'center',
         marginTop: 20,
+        height: 50,
+        justifyContent: 'center',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
     },
     buttonDisabled: {
         backgroundColor: '#ccc',

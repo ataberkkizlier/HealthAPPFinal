@@ -133,7 +133,7 @@ const Home = ({ navigation }) => {
   const { nutritionPercentage, updateNutritionPercentage } = useNutrition();
   const { sleepQualityPercentage, updateSleepQualityPercentage } = useSleep();
   const { mentalHealthPercentage, mentalHealthStatus, needsNewAssessment } = useMentalHealth();
-  const { user } = useAuth();
+  const { user, profileImage } = useAuth();
   const [healthMetrics, setHealthMetrics] = useState({
     bloodPressure: '120/80'
   });
@@ -241,34 +241,45 @@ const Home = ({ navigation }) => {
     
     return (
       <View style={styles.headerContainer}>
-        <View style={styles.viewLeft}>
-          {user?.photoURL ? (
-            <Image
-              source={{ uri: user.photoURL }}
-              resizeMode='cover'
-              style={styles.userIcon}
-            />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: avatarColor }]}>
-              <Text style={styles.avatarText}>{firstLetter}</Text>
-            </View>
-          )}
+        <TouchableOpacity 
+          style={styles.viewLeft}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          <View style={styles.avatarContainer}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                resizeMode='cover'
+                style={styles.userIcon}
+              />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: avatarColor }]}>
+                <Text style={styles.avatarText}>{firstLetter}</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.viewNameContainer}>
             <Text style={styles.greeeting}>{greeting}👋</Text>
             <Text style={[styles.title, {
               color: dark ? COLORS.white : COLORS.greyscale900
             }]}>{firstName}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={styles.viewRight}>
-          <TouchableOpacity onPress={() => navigation.navigate("Notifications")}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate("Notifications")}
+            style={styles.iconButton}
+          >
             <Image
               source={icons.notificationBell2}
               resizeMode='contain'
               style={[styles.bellIcon, { tintColor: dark ? COLORS.white : COLORS.greyscale900 }]}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("Favourite")}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate("Favourite")}
+            style={styles.iconButton}
+          >
             <Image
               source={icons.heartOutline}
               resizeMode='contain'
@@ -551,12 +562,23 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    paddingVertical: 8
+  },
+  avatarContainer: {
+    elevation: 6,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    borderRadius: 24,
   },
   userIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   viewLeft: {
     flexDirection: "row",
@@ -580,16 +602,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center"
   },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   bellIcon: {
     height: 24,
     width: 24,
-    marginRight: 8,
     tintColor: COLORS.greyscale900
   },
   bookmarkIcon: {
     height: 24,
     width: 24,
     tintColor: COLORS.greyscale900
+  },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontFamily: 'bold',
   },
   searchBarContainer: {
     width: '100%',
@@ -770,29 +813,6 @@ const styles = StyleSheet.create({
   categoryFilterWrapper: {
     marginBottom: 8,
   },
-  avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 20,
-    fontFamily: 'bold',
-  },
-  noResultsContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noResultsText: {
-    fontFamily: 'medium',
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-  },
   notificationDot: {
     width: 10,
     height: 10,
@@ -807,6 +827,17 @@ const styles = StyleSheet.create({
     fontFamily: 'medium',
     color: '#8338EC',
     marginTop: 5,
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'medium',
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
   },
 });
 

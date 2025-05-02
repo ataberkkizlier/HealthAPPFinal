@@ -105,6 +105,22 @@ export const SleepProvider = ({ children }) => {
     }
   };
 
+  // Reset sleep data
+  const resetSleep = async () => {
+    try {
+      setSleepHours(0);
+      setSleepQualityPercentage(0);
+      
+      // Don't reset history, just update AsyncStorage with current state
+      await AsyncStorage.setItem('sleepHours', '0');
+      await AsyncStorage.setItem('sleepQualityPercentage', '0');
+      
+      console.log('Sleep data reset to 0');
+    } catch (error) {
+      console.error('Error resetting sleep data:', error);
+    }
+  };
+
   return (
     <SleepContext.Provider value={{
       sleepHours,
@@ -112,6 +128,7 @@ export const SleepProvider = ({ children }) => {
       sleepHistory,
       updateSleepHours,
       updateSleepQualityPercentage,
+      resetSleep,
       recommendedSleepHours: RECOMMENDED_SLEEP_HOURS
     }}>
       {children}
