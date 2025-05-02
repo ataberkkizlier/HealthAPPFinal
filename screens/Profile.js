@@ -863,21 +863,6 @@ const Profile = ({ navigation }) => {
                     
                     <View style={styles.spacer} />
                     {renderSettings()}
-                    
-                    {/* Add a direct logout button at the bottom for easier access */}
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: 'red',
-                            padding: 15,
-                            borderRadius: 10,
-                            alignItems: 'center',
-                            marginTop: 20,
-                            marginBottom: 50
-                        }}
-                        onPress={() => refRBSheet.current.open()}
-                    >
-                        <Text style={{color: 'white', fontWeight: 'bold'}}>Logout</Text>
-                    </TouchableOpacity>
                 </View>
             </ScrollView>
             
