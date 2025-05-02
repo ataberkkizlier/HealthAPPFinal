@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Alert, FlatList, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  Alert, 
+  StatusBar,
+  Platform,
+  SafeAreaView,
+  VirtualizedList
+} from 'react-native';
 import { useWorkout } from '../context/WorkoutContext';
 import { useAuth } from '../context/AuthContext';
 import { ref, update } from 'firebase/database';
 import { database } from '../firebase/config';
+import { COLORS } from '../constants';
+import { Ionicons } from '@expo/vector-icons';
 
 // Original exercise list
 const exercises = [
@@ -33,8 +45,7 @@ const exercises = [
 // Target calories for 100% workout completion
 const TARGET_CALORIES = 300; // 300 calories = 100% workout
 
-const Workout = () => {
-    const navigation = useNavigation();
+const Workout = ({ navigation }) => {
     const [selectedExercise, setSelectedExercise] = useState(null);
     const [repetitions, setRepetitions] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -133,315 +144,589 @@ const Workout = () => {
         }
     };
 
-    return (
-        <View style={styles.container}>
-            {/* Back Button */}
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.navigate('Home')}
-            >
-                <Image source={require('../assets/icons/back.png')} style={styles.backIcon} />
-                <Text style={styles.backText}>Home</Text>
-            </TouchableOpacity>
+    // Quick add common workout presets
+    const quickAddWorkout = (exerciseId, reps) => {
+        const exercise = exercises.find(ex => ex.id === exerciseId);
+        if (exercise) {
+            const newCaloriesBurned = exercise.caloriesPerRep * reps;
+            const totalCaloriesBurned = caloriesBurned + newCaloriesBurned;
+            
+            // Update calories burned in context
+            updateCaloriesBurned(totalCaloriesBurned);
+            
+            // Save to Firebase if user is logged in
+            if (user) {
+                try {
+                    const percentage = Math.min(100, Math.round((totalCaloriesBurned / TARGET_CALORIES) * 100));
+                    saveHealthData({
+                        workoutPercentage: percentage,
+                        caloriesBurned: totalCaloriesBurned,
+                        lastUpdated: Date.now()
+                    });
+                } catch (error) {
+                    console.error('Error saving workout progress:', error);
+                }
+            }
+            
+            Alert.alert(
+                'Quick Workout Added',
+                `Added ${reps} ${exercise.name}: ${newCaloriesBurned.toFixed(2)} calories`
+            );
+        }
+    };
 
-            {/* Main Content */}
-            <ScrollView style={styles.scrollView}>
-                <View style={styles.contentContainer}>
-                    <Text style={styles.title}>Workout Tracker</Text>
-                    
-                    {user ? (
-                        <View style={styles.userInfoContainer}>
-                            <Text style={styles.userInfo}>Tracking for: {user.email}</Text>
-                            <Text style={styles.userInfo}>User ID: {user.uid.substring(0, 8)}...</Text>
+    const renderExerciseItem = ({ item }) => (
+        <TouchableOpacity
+            style={[
+                styles.exerciseItem,
+                selectedExercise?.id === item.id && styles.selectedExerciseItem
+            ]}
+            onPress={() => {
+                setSelectedExercise(item);
+                setRepetitions('');
+            }}
+        >
+            <View style={styles.exerciseItemContent}>
+                <View style={styles.exerciseInfo}>
+                    <Text style={styles.exerciseName}>{item.name}</Text>
+                    <Text style={styles.exerciseDescription}>{item.description}</Text>
+                </View>
+                <View style={styles.exerciseCaloriesContainer}>
+                    <Text style={styles.exerciseCalories}>
+                        {item.caloriesPerRep.toFixed(2)} cal/rep
+                    </Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+
+    const getItemCount = () => filteredExercises.length;
+    
+    const getItem = (data, index) => filteredExercises[index];
+
+    // Main content for summary and quick add sections
+    const renderSummaryContent = () => (
+        <>
+            {/* Progress Summary */}
+            <View style={styles.summaryCard}>
+                <View style={styles.progressHeader}>
+                    <View style={styles.progressInfo}>
+                        <Text style={styles.progressTitle}>Today's Workout</Text>
+                        <View style={styles.progressValues}>
+                            <Text style={styles.caloriesValue}>{caloriesBurned.toFixed(2)}</Text>
+                            <Text style={styles.goalValue}> / {TARGET_CALORIES} calories</Text>
                         </View>
-                    ) : (
-                        <Text style={styles.guestWarning}>Guest Mode - Sign in to save your data</Text>
-                    )}
-                    
-                    {/* Progress Display */}
-                    <View style={styles.progressSection}>
-                        <Text style={styles.progressTitle}>Your Workout Progress</Text>
-                        <Text style={styles.caloriesText}>
-                            Total Calories Burned: {caloriesBurned.toFixed(2)} cal
-                        </Text>
-                        <View style={styles.progressContainer}>
-                            <View 
-                                style={[
-                                    styles.progressBar, 
-                                    { width: `${workoutPercentage}%` }
-                                ]} 
-                            />
-                        </View>
-                        <Text style={styles.percentageText}>
-                            {workoutPercentage}% Complete (Target: {TARGET_CALORIES} cal)
-                        </Text>
-                        
-                        {user && (
-                            <TouchableOpacity style={styles.resetButton} onPress={resetWorkoutPercentage}>
-                                <Text style={styles.resetButtonText}>Reset Progress</Text>
-                            </TouchableOpacity>
-                        )}
                     </View>
-                    
-                    {/* Search Bar */}
+                    <View style={styles.circleProgressContainer}>
+                        <View style={styles.circleProgress}>
+                            <Text style={styles.percentageText}>{workoutPercentage}%</Text>
+                        </View>
+                    </View>
+                </View>
+                
+                <View style={styles.progressBarContainer}>
+                    <View style={styles.progressBarTrack}>
+                        <View 
+                            style={[
+                                styles.progressBarFill, 
+                                { width: `${Math.min(100, workoutPercentage)}%` }
+                            ]} 
+                        />
+                    </View>
+                </View>
+                
+                <View style={styles.statsContainer}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statValue}>{caloriesBurned.toFixed(0)}</Text>
+                        <Text style={styles.statLabel}>Calories Burned</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statValue}>{(TARGET_CALORIES - caloriesBurned).toFixed(0)}</Text>
+                        <Text style={styles.statLabel}>Calories Left</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statValue}>{workoutPercentage}%</Text>
+                        <Text style={styles.statLabel}>Completed</Text>
+                    </View>
+                </View>
+            </View>
+            
+            {/* Quick Add Section */}
+            <View style={styles.quickAddCard}>
+                <Text style={styles.sectionTitle}>Quick Workouts</Text>
+                
+                <View style={styles.quickAddContainer}>
+                    <TouchableOpacity 
+                        style={styles.quickAddButton} 
+                        onPress={() => quickAddWorkout('1', 10)} // 10 Push-ups
+                    >
+                        <Text style={styles.quickAddButtonTitle}>Push-ups</Text>
+                        <Text style={styles.quickAddButtonReps}>10 Reps</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.quickAddButton} 
+                        onPress={() => quickAddWorkout('2', 20)} // 20 Squats
+                    >
+                        <Text style={styles.quickAddButtonTitle}>Squats</Text>
+                        <Text style={styles.quickAddButtonReps}>20 Reps</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.quickAddButton} 
+                        onPress={() => quickAddWorkout('5', 5)} // 5 Burpees
+                    >
+                        <Text style={styles.quickAddButtonTitle}>Burpees</Text>
+                        <Text style={styles.quickAddButtonReps}>5 Reps</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+            
+            {/* Custom Exercise Header */}
+            <View style={styles.customExerciseCard}>
+                <Text style={styles.sectionTitle}>Add Custom Exercise</Text>
+                
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                    <Ionicons name="search" size={20} color="#757575" style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search Exercises..."
+                        placeholder="Search exercises..."
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        placeholderTextColor="#9E9E9E"
                     />
-                    
-                    {/* Exercise Section */}
-                    <Text style={styles.sectionTitle}>Available Exercises</Text>
-                    
-                    {/* Input for Repetitions - Moved to top of exercise list */}
-                    {selectedExercise && (
-                        <View style={styles.repetitionContainer}>
-                            <Text style={styles.selectedExerciseText}>
-                                Selected: {selectedExercise.name}
-                            </Text>
+                </View>
+                
+                {/* Input for Repetitions - only shown when exercise is selected */}
+                {selectedExercise && (
+                    <View style={styles.repetitionContainer}>
+                        <Text style={styles.selectedExerciseText}>
+                            Selected: {selectedExercise.name}
+                        </Text>
+                        <View style={styles.repetitionInputRow}>
                             <TextInput
-                                style={styles.input}
+                                style={styles.repetitionInput}
                                 placeholder="Enter repetitions"
                                 keyboardType="numeric"
                                 value={repetitions}
                                 onChangeText={setRepetitions}
+                                placeholderTextColor="#9E9E9E"
+                                autoFocus={true}
+                                maxLength={10}
+                                returnKeyType="done"
                             />
                             <TouchableOpacity 
-                                style={styles.calculateButton} 
+                                style={styles.addButton} 
                                 onPress={handleCalculateCalories}
                             >
-                                <Text style={styles.calculateButtonText}>
-                                    Add Exercise
-                                </Text>
+                                <Text style={styles.addButtonText}>Add</Text>
                             </TouchableOpacity>
                         </View>
-                    )}
-                    
-                    {/* Exercise List */}
-                    <FlatList
-                        data={filteredExercises}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.exerciseItem,
-                                    selectedExercise?.id === item.id && styles.selectedExerciseItem
-                                ]}
-                                onPress={() => {
-                                    setSelectedExercise(item);
-                                    setRepetitions('');
-                                }}
-                            >
-                                <Text style={styles.exerciseName}>{item.name}</Text>
-                                <Text style={styles.exerciseDescription}>{item.description}</Text>
-                                <Text style={styles.exerciseCalories}>
-                                    {item.caloriesPerRep.toFixed(2)} cal/rep
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        style={styles.exerciseList}
-                        nestedScrollEnabled={true}
-                        scrollEnabled={false}
-                    />
-                </View>
-            </ScrollView>
+                        
+                        <TouchableOpacity 
+                            style={styles.cancelButton} 
+                            onPress={() => setSelectedExercise(null)}
+                        >
+                            <Text style={styles.cancelButtonText}>Cancel Selection</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </>
+    );
+
+    // Workout Tips section (shown after the exercise list)
+    const renderTips = () => (
+        <View style={styles.tipsCard}>
+            <View style={styles.tipsHeader}>
+                <Ionicons name="fitness-outline" size={22} color={COLORS.primary} style={styles.tipsIcon} />
+                <Text style={styles.tipsTitle}>Workout Tips</Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.tipText}>Warm up for 5-10 minutes before starting your workout</Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.tipText}>Stay hydrated by drinking water before, during, and after exercise</Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.tipText}>Aim for at least 150 minutes of moderate exercise each week</Text>
+            </View>
         </View>
+    );
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.navigate('Home')}
+                    >
+                        <Ionicons name="arrow-back" size={24} color="white" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Workout Tracker</Text>
+                    <TouchableOpacity 
+                        style={styles.resetButton}
+                        onPress={resetWorkoutPercentage}
+                    >
+                        <Ionicons name="refresh" size={22} color="white" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+            
+            <VirtualizedList
+                data={filteredExercises}
+                initialNumToRender={4}
+                renderItem={renderExerciseItem}
+                keyExtractor={item => item.id}
+                getItemCount={getItemCount}
+                getItem={getItem}
+                ListHeaderComponent={renderSummaryContent}
+                ListFooterComponent={renderTips}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={true}
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                windowSize={21}
+            />
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f8ff',
+        backgroundColor: '#F5F7FA',
     },
-    scrollView: {
-        flex: 1,
-        marginTop: 70, // Space for the fixed back button
+    header: {
+        backgroundColor: COLORS.primary,
+        paddingTop: Platform.OS === 'ios' ? 0 : 20,
+        paddingBottom: 15,
     },
-    backButton: {
-        position: 'absolute',
-        top: 40,
-        left: 20,
+    headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        zIndex: 10,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
     },
-    backIcon: {
-        width: 20,
-        height: 20,
-        resizeMode: 'contain',
+    backButton: {
+        padding: 8,
     },
-    backText: {
-        marginLeft: 5,
-        fontSize: 16,
+    headerTitle: {
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#007bff',
+        color: 'white',
     },
-    contentContainer: {
+    resetButton: {
+        padding: 8,
+    },
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 30,
+    },
+    summaryCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
         padding: 20,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        color: '#333',
-        textAlign: 'center',
-    },
-    userInfoContainer: {
-        marginBottom: 15,
-        alignItems: 'center',
-    },
-    userInfo: {
-        fontSize: 16,
-        color: '#007bff',
-        marginBottom: 5,
-    },
-    guestWarning: {
-        fontSize: 16,
-        marginBottom: 15,
-        color: '#ff7700',
-        fontStyle: 'italic',
-        textAlign: 'center',
-    },
-    progressSection: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 20,
-        elevation: 3,
+        marginTop: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    progressHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    progressInfo: {
+        flex: 1,
     },
     progressTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#333',
-    },
-    caloriesText: {
         fontSize: 16,
-        marginBottom: 10,
+        color: '#757575',
+        marginBottom: 5,
+    },
+    progressValues: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    caloriesValue: {
+        fontSize: 28,
+        fontWeight: 'bold',
         color: '#333',
     },
-    progressContainer: {
-        width: '100%',
-        height: 20,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 10,
-        marginVertical: 10,
-        overflow: 'hidden',
+    goalValue: {
+        fontSize: 18,
+        color: '#757575',
     },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#2EC4B6', // Workout color from Home screen
+    circleProgressContainer: {
+        width: 70,
+        height: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    circleProgress: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 5,
+        borderColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     percentageText: {
         fontSize: 16,
-        color: '#333',
-        marginBottom: 10,
+        fontWeight: 'bold',
+        color: COLORS.primary,
     },
-    resetButton: {
-        backgroundColor: '#ff3b30',
-        borderRadius: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+    progressBarContainer: {
         marginTop: 10,
-        alignSelf: 'center',
-    },
-    resetButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    searchInput: {
-        height: 50,
-        borderColor: '#2EC4B6',
-        borderWidth: 2,
-        borderRadius: 10,
-        marginBottom: 20,
-        paddingHorizontal: 15,
-        fontSize: 16,
-        backgroundColor: '#fff',
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#333',
-    },
-    exerciseList: {
         marginBottom: 20,
     },
-    exerciseItem: {
-        padding: 15,
-        backgroundColor: '#fff',
-        marginBottom: 10,
-        borderRadius: 10,
-        borderLeftWidth: 4,
-        borderLeftColor: '#2EC4B6',
+    progressBarTrack: {
+        height: 10,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 5,
+        overflow: 'hidden',
     },
-    selectedExerciseItem: {
-        backgroundColor: '#e6f7f5',
-        borderWidth: 1,
-        borderColor: '#2EC4B6',
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: COLORS.primary,
+        borderRadius: 5,
     },
-    exerciseName: {
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statValue: {
         fontSize: 18,
         fontWeight: 'bold',
+        color: '#333',
+    },
+    statLabel: {
+        fontSize: 14,
+        color: '#757575',
+        marginTop: 5,
+    },
+    statDivider: {
+        width: 1,
+        height: '100%',
+        backgroundColor: '#E0E0E0',
+    },
+    quickAddCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 15,
+    },
+    quickAddContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    quickAddButton: {
+        flex: 1,
+        backgroundColor: '#F5F7FA',
+        borderRadius: 10,
+        padding: 15,
+        alignItems: 'center',
+        marginHorizontal: 5,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    quickAddButtonTitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+        marginBottom: 5,
+    },
+    quickAddButtonReps: {
+        fontSize: 14,
+        color: '#757575',
+    },
+    customExerciseCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F7FA',
+        borderRadius: 10,
+        paddingHorizontal: 15,
+        marginBottom: 15,
+    },
+    searchIcon: {
+        marginRight: 10,
+    },
+    searchInput: {
+        flex: 1,
+        height: 50,
+        fontSize: 16,
+        color: '#333',
+    },
+    repetitionContainer: {
+        backgroundColor: '#F5F7FA',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 15,
+    },
+    selectedExerciseText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+        marginBottom: 10,
+    },
+    repetitionInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    repetitionInput: {
+        flex: 1,
+        height: 50,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        paddingHorizontal: 15,
+        fontSize: 16,
+        color: '#333',
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    addButton: {
+        backgroundColor: COLORS.primary,
+        borderRadius: 10,
+        height: 50,
+        paddingHorizontal: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    exerciseItem: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 10,
+        borderLeftWidth: 3,
+        borderLeftColor: '#E0E0E0',
+    },
+    selectedExerciseItem: {
+        borderLeftColor: COLORS.primary,
+        backgroundColor: '#F5F7FA',
+    },
+    exerciseItemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    exerciseInfo: {
+        flex: 1,
+    },
+    exerciseName: {
+        fontSize: 16,
+        fontWeight: '500',
         color: '#333',
     },
     exerciseDescription: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 5,
+        color: '#757575',
+        marginTop: 3,
+    },
+    exerciseCaloriesContainer: {
+        marginLeft: 10,
+        padding: 5,
+        backgroundColor: '#F5F7FA',
+        borderRadius: 5,
     },
     exerciseCalories: {
         fontSize: 14,
-        color: '#2EC4B6',
-        fontWeight: 'bold',
-        marginTop: 5,
+        fontWeight: '500',
+        color: COLORS.primary,
     },
-    repetitionContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 20,
-        elevation: 3,
+    tipsCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
+        elevation: 3,
+        marginBottom: 16,
     },
-    selectedExerciseText: {
+    tipsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    tipsIcon: {
+        marginRight: 8,
+    },
+    tipsTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontWeight: '600',
         color: '#333',
     },
-    input: {
-        height: 50,
-        borderColor: '#2EC4B6',
-        borderWidth: 2,
-        borderRadius: 10,
-        marginBottom: 10,
-        paddingHorizontal: 15,
-        fontSize: 16,
-    },
-    calculateButton: {
-        backgroundColor: '#2EC4B6',
-        borderRadius: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+    tipItem: {
+        flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 12,
     },
-    calculateButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
+    tipText: {
+        fontSize: 14,
+        color: '#616161',
+        marginLeft: 10,
+        flex: 1,
+    },
+    cancelButton: {
+        marginTop: 15,
+        alignItems: 'center',
+        padding: 10,
+    },
+    cancelButtonText: {
+        color: COLORS.primary,
+        fontSize: 14,
+        fontWeight: '500',
     },
 });
 

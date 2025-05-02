@@ -494,104 +494,139 @@ const Nutrition = () => {
     setQuantity('1');
   };
 
-  // Modal content for food details
+  // Render food details modal
   const renderFoodDetailsModal = () => (
     <Modal
       animationType="slide"
       transparent={true}
       visible={foodDetailsModalVisible}
-      onRequestClose={resetFoodDetailsModal}
+      onRequestClose={() => setFoodDetailsModalVisible(false)}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
-          ) : selectedFoodDetails ? (
-            <>
-              <Text style={styles.modalTitle}>{selectedFoodDetails.food_name}</Text>
-              
-              {/* Food Type Indicator */}
-              <View style={styles.foodTypeContainer}>
-                <Text style={styles.foodTypeText}>
-                  {selectedFoodDetails.food_type === "Brand" 
-                    ? `${selectedFoodDetails.brand_name || 'Brand'}` 
-                    : selectedFoodDetails.food_type || 'Food'}
-                </Text>
-              </View>
-              
-              {/* Serving Size Selection */}
-              <Text style={styles.servingSizeLabel}>Serving Size:</Text>
-              {servingSizes && servingSizes.length > 0 ? (
-                <ScrollView horizontal style={styles.servingSizeScroll} showsHorizontalScrollIndicator={false}>
-                  {servingSizes.map((serving, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.servingSizeOption,
-                        selectedServingIndex === index && styles.selectedServingSize
-                      ]}
-                      onPress={() => setSelectedServingIndex(index)}
-                    >
-                      <Text style={[
-                        styles.servingSizeText,
-                        selectedServingIndex === index && styles.selectedServingSizeText
-                      ]}>
-                        {serving.serving_description}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              ) : (
-                <Text style={styles.noServingsText}>No serving information available</Text>
-              )}
-              
-              {/* Nutrition Info */}
-              {servingSizes && servingSizes.length > 0 && (
-                <View style={styles.nutritionInfo}>
-                  <Text style={styles.nutritionLabel}>Nutrition per serving:</Text>
-                  <Text style={styles.nutritionValue}>Calories: {servingSizes[selectedServingIndex].calories}</Text>
-                  <Text style={styles.nutritionValue}>Protein: {servingSizes[selectedServingIndex].protein || 0}g</Text>
-                  <Text style={styles.nutritionValue}>Fat: {servingSizes[selectedServingIndex].fat || 0}g</Text>
-                  <Text style={styles.nutritionValue}>Carbs: {servingSizes[selectedServingIndex].carbohydrate || 0}g</Text>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {selectedFoodDetails?.food_name || 'Food Details'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setFoodDetailsModalVisible(false)}
+            >
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedFoodDetails ? (
+            <ScrollView style={styles.modalScrollContent}>
+              <Text style={styles.foodDescription}>
+                {selectedFoodDetails.food_description || 'No description available'}
+              </Text>
+
+              {servingSizes.length > 0 ? (
+                <View style={styles.servingContainer}>
+                  <Text style={styles.sectionTitle}>Serving Size</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.servingSizesScroll}
+                  >
+                    {servingSizes.map((serving, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.servingOption,
+                          selectedServingIndex === index && styles.selectedServingOption
+                        ]}
+                        onPress={() => setSelectedServingIndex(index)}
+                      >
+                        <Text style={[
+                          styles.servingText,
+                          selectedServingIndex === index && styles.selectedServingText
+                        ]}>
+                          {serving.serving_description}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              )}
-              
-              {/* Quantity Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Quantity:</Text>
-                <TextInput
-                  style={styles.quantityInput}
-                  keyboardType="numeric"
-                  value={quantity}
-                  onChangeText={setQuantity}
-                />
+              ) : null}
+
+              <View style={styles.nutritionFactsCard}>
+                <Text style={styles.nutritionFactsHeader}>Nutrition Facts</Text>
+                <View style={styles.nutritionFactsRow}>
+                  <Text style={styles.nutritionFactsLabel}>Calories</Text>
+                  <Text style={styles.nutritionFactsValue}>
+                    {selectedFoodDetails.calories || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.nutritionFactsRow}>
+                  <Text style={styles.nutritionFactsLabel}>Carbohydrates</Text>
+                  <Text style={styles.nutritionFactsValue}>
+                    {selectedFoodDetails.carbs || 'N/A'}g
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.nutritionFactsRow}>
+                  <Text style={styles.nutritionFactsLabel}>Protein</Text>
+                  <Text style={styles.nutritionFactsValue}>
+                    {selectedFoodDetails.protein || 'N/A'}g
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.nutritionFactsRow}>
+                  <Text style={styles.nutritionFactsLabel}>Fat</Text>
+                  <Text style={styles.nutritionFactsValue}>
+                    {selectedFoodDetails.fat || 'N/A'}g
+                  </Text>
+                </View>
               </View>
-              
-              {/* Total */}
-              {servingSizes && servingSizes.length > 0 && (
-                <Text style={styles.totalCalories}>
-                  Total: {Math.round(servingSizes[selectedServingIndex].calories * parseFloat(quantity || 0))} calories
-                </Text>
-              )}
-              
-              {/* Buttons */}
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]} 
-                  onPress={resetFoodDetailsModal}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.addButton]}
-                  onPress={handleAddFood}
-                >
-                  <Text style={styles.modalButtonText}>Add Food</Text>
-                </TouchableOpacity>
+
+              <View style={styles.quantityContainer}>
+                <Text style={styles.sectionTitle}>Quantity</Text>
+                <View style={styles.quantityInputContainer}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => {
+                      const current = parseFloat(quantity);
+                      if (current > 0.5) {
+                        setQuantity((current - 0.5).toString());
+                      }
+                    }}
+                  >
+                    <Text style={styles.quantityButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.quantityInput}
+                    value={quantity}
+                    onChangeText={setQuantity}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                  />
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => {
+                      const current = parseFloat(quantity) || 0;
+                      setQuantity((current + 0.5).toString());
+                    }}
+                  >
+                    <Text style={styles.quantityButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </>
+
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={handleAddFood}
+              >
+                <Text style={styles.addButtonText}>Add to Today's Meals</Text>
+              </TouchableOpacity>
+            </ScrollView>
           ) : (
-            <Text style={styles.errorText}>Failed to load food details.</Text>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading food details...</Text>
+            </View>
           )}
         </View>
       </View>
@@ -717,168 +752,155 @@ const Nutrition = () => {
     }
   };
 
-  // Render a food search result item
-  const renderFoodItem = ({ item }) => {
-    return (
-      <View style={styles.foodItemContainer}>
-        <View style={styles.foodItemContent}>
-          <Text style={styles.foodName}>{item.food_name || item.name}</Text>
-          <Text style={styles.foodDescription}>{item.food_description || `${item.calories} cal per ${item.unit}`}</Text>
-        </View>
-        
-        <TouchableOpacity 
-          style={styles.detailsButton}
-          onPress={() => directAccessFood(item)}
-        >
-          <Text style={styles.detailsButtonText}>Details</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // Render a consumed food item
-  const renderConsumedFoodItem = ({ item, index }) => (
-    <View style={styles.consumedFoodItem}>
-      <View style={styles.consumedFoodInfo}>
-        <Text style={styles.consumedFoodName}>{item.name}</Text>
-        <Text style={styles.consumedFoodDescription}>
-          {item.quantity} {item.servingDescription} ({item.calories} cal)
-        </Text>
-        <Text style={styles.consumedFoodNutrition}>
-          P: {item.protein || 0}g | F: {item.fat || 0}g | C: {item.carbs || 0}g
-        </Text>
-      </View>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => handleRemoveFood(index)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-      </TouchableOpacity>
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nutrition</Text>
-        <View style={{ width: 24 }} />
-      </View>
-      
-      <View style={styles.userInfo}>
-        <Text style={styles.userInfoText}>Tracking for: {user ? user.email : 'Guest'}</Text>
-      </View>
-
-      {/* Nutrition Progress */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressTitle}>Today's Nutrition: {nutritionPercentage}%</Text>
-        <Text style={styles.caloriesText}>Calories Consumed: {Math.round(caloriesConsumed)} / {TARGET_CALORIES} cal</Text>
-        <View style={styles.progressBarContainer}>
-          <ProgressBar progress={nutritionPercentage} color={COLORS.primary} />
-        </View>
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleReset}
-        >
-          <Text style={styles.resetButtonText}>Reset Progress</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Database Status Information */}
-      {isUsingFallbackApi ? (
-        <View style={styles.apiInfoContainer}>
-          <Text style={styles.apiInfoText}>
-            Using Alternative Nutrition Database
-          </Text>
-          <Text style={styles.apiSubInfoText}>
-            The app is using an alternative nutrition database because the primary database couldn't be accessed.
-          </Text>
-          <TouchableOpacity style={styles.diagButton} onPress={runApiDiagnostics}>
-            <Text style={styles.diagButtonText}>Run API Diagnostics</Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nutrition Tracker</Text>
+          <TouchableOpacity 
+            style={styles.resetButton}
+            onPress={handleReset}
+          >
+            <Ionicons name="refresh" size={22} color="white" />
           </TouchableOpacity>
         </View>
-      ) : fatSecretService.ipAddress && (!fatSecretService.accessToken) ? (
-        <View style={styles.apiInfoContainer}>
-          <Text style={styles.apiInfoText}>
-            Nutrition Database Notice
-          </Text>
-          <Text style={styles.apiSubInfoText}>
-            Using offline food database. The app couldn't connect to the online nutrition database.
-            This may be due to connection issues or API limitations.
-            Your device IP is {fatSecretService.ipAddress}.
-          </Text>
-          <TouchableOpacity style={styles.diagButton} onPress={runApiDiagnostics}>
-            <Text style={styles.diagButtonText}>Run API Diagnostics</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search for food..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-        />
-        <TouchableOpacity 
-          style={styles.searchButton}
-          onPress={handleSearch}
-          disabled={isSearching}
-        >
-          {isSearching ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="search" size={20} color="#fff" />
-          )}
-        </TouchableOpacity>
       </View>
 
-      {/* Main Content */}
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.mainContent}>
-          {/* Search Results Section */}
-          {searchResults.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Search Results:</Text>
-              {/* Render items directly without FlatList */}
-              <View style={styles.foodList}>
-                {searchResults.map((item, index) => (
-                  <View key={`search-${item.food_id || index}`}>
-                    {renderFoodItem({item})}
-                  </View>
-                ))}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Progress Summary */}
+        <View style={styles.summaryCard}>
+          <View style={styles.calorieContainer}>
+            <View style={styles.calorieInfo}>
+              <Text style={styles.calorieTitle}>Today's Calories</Text>
+              <View style={styles.calorieValues}>
+                <Text style={styles.calorieConsumed}>{Math.round(caloriesConsumed)}</Text>
+                <Text style={styles.calorieTarget}> / {TARGET_CALORIES}</Text>
               </View>
             </View>
-          )}
-          
-          {/* Today's Food Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Today's Food:</Text>
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
-            ) : todaysFoods.length > 0 ? (
-              <View style={styles.consumedFoodList}>
-                {todaysFoods.map((item, index) => (
-                  <View key={`consumed-${index}`}>
-                    {renderConsumedFoodItem({item, index})}
-                  </View>
-                ))}
+            <View style={styles.circleProgressContainer}>
+              <View style={styles.circleProgress}>
+                <Text style={styles.percentageText}>{nutritionPercentage}%</Text>
               </View>
-            ) : (
-              <Text style={styles.emptyListText}>No foods logged today. Search and add some!</Text>
-            )}
+            </View>
+          </View>
+          <View style={styles.progressBarContainer}>
+            <ProgressBar 
+              progress={Math.min(1, caloriesConsumed / TARGET_CALORIES)} 
+              color={COLORS.primary}
+              trackColor="#E0E0E0"
+              height={10}
+            />
           </View>
         </View>
+
+        {/* Search */}
+        <View style={styles.searchCard}>
+          <Text style={styles.sectionTitle}>Search Food</Text>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for foods..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
+              placeholderTextColor="#9E9E9E"
+            />
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={handleSearch}
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="search" size={20} color="white" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {searchResults.length > 0 && (
+            <View style={styles.resultsContainer}>
+              <Text style={styles.resultsTitle}>Results</Text>
+              <ScrollView 
+                style={styles.resultsList}
+                nestedScrollEnabled={true}
+                contentContainerStyle={styles.resultsListContent}
+              >
+                {searchResults.length === 0 ? (
+                  <Text style={styles.emptyMessage}>No results found</Text>
+                ) : (
+                  searchResults.map((item) => (
+                    <View key={item.food_id || String(Math.random())} style={styles.foodItemContainer}>
+                      <View style={styles.foodItemContent}>
+                        <Text style={styles.foodName}>{item.food_name || item.name}</Text>
+                        <Text style={styles.foodDescription}>{item.food_description || `${item.calories} cal per ${item.unit}`}</Text>
+                      </View>
+                      
+                      <TouchableOpacity 
+                        style={styles.detailsButton}
+                        onPress={() => directAccessFood(item)}
+                      >
+                        <Text style={styles.detailsButtonText}>Details</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        {/* Today's Foods */}
+        <View style={styles.todaysFoodsCard}>
+          <Text style={styles.sectionTitle}>Today's Foods</Text>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading your food diary...</Text>
+            </View>
+          ) : todaysFoods.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="restaurant-outline" size={48} color="#BDBDBD" />
+              <Text style={styles.emptyMessage}>No foods added today</Text>
+              <Text style={styles.emptySubtitle}>Search for foods to get started</Text>
+            </View>
+          ) : (
+            <ScrollView 
+              style={styles.todaysFoodsList}
+              nestedScrollEnabled={true}
+              contentContainerStyle={styles.todaysFoodsListContent}
+            >
+              {todaysFoods.map((item, index) => (
+                <View key={`consumed-${index}`} style={styles.consumedFoodItem}>
+                  <View style={styles.consumedFoodInfo}>
+                    <Text style={styles.consumedFoodName}>{item.name}</Text>
+                    <Text style={styles.consumedFoodDescription}>
+                      {item.quantity} {item.servingDescription} ({item.calories} cal)
+                    </Text>
+                    <Text style={styles.consumedFoodNutrition}>
+                      P: {item.protein || 0}g | F: {item.fat || 0}g | C: {item.carbs || 0}g
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => handleRemoveFood(index)}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
       </ScrollView>
-      
-      {/* Food Details Modal */}
+
       {renderFoodDetailsModal()}
     </View>
   );
@@ -887,123 +909,202 @@ const Nutrition = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20, // Add safe area padding for iOS
+    backgroundColor: '#F5F7FA',
   },
   header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 15,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 50,
-    marginBottom: 8,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: 'white',
+  },
+  resetButton: {
+    padding: 8,
+  },
+  scrollView: {
     flex: 1,
-    textAlign: 'center',
   },
-  userInfo: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 10,
-    backgroundColor: '#E8F0FE',
-    borderRadius: 8,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
   },
-  userInfoText: {
-    fontSize: 14,
-    color: '#4A6FA5',
-  },
-  progressContainer: {
-    marginBottom: 12,
-    padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  summaryCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 3,
-    marginHorizontal: 16,
   },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  caloriesText: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  resetButton: {
-    backgroundColor: '#FF3B30',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  searchContainer: {
+  calorieContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginVertical: 12,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
   },
-  searchInput: {
+  calorieInfo: {
     flex: 1,
-    height: 44,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
+  },
+  calorieTitle: {
     fontSize: 16,
+    color: '#757575',
+    marginBottom: 5,
+  },
+  calorieValues: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  calorieConsumed: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#333',
   },
-  searchButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#007bff',
-    borderRadius: 8,
+  calorieTarget: {
+    fontSize: 18,
+    color: '#757575',
+  },
+  circleProgressContainer: {
+    width: 70,
+    height: 70,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
-  sectionContainer: {
-    marginBottom: 16,
+  circleProgress: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 5,
+    borderColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  percentageText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  progressBarContainer: {
+    marginTop: 10,
+  },
+  searchCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    marginBottom: 15,
   },
-  foodList: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 5,
-    marginBottom: 8,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    marginRight: 10,
+  },
+  searchButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    height: 50,
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultsContainer: {
+    marginTop: 20,
+  },
+  resultsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#757575',
+    marginBottom: 10,
+  },
+  resultsList: {
+    maxHeight: 250,
+  },
+  resultsListContent: {
+    paddingBottom: 10,
+  },
+  todaysFoodsCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  todaysFoodsList: {
+    maxHeight: 350,
+  },
+  todaysFoodsListContent: {
+    paddingBottom: 10,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyMessage: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#757575',
+    marginTop: 10,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#9E9E9E',
+    marginTop: 5,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#757575',
+    marginTop: 10,
   },
   foodItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    backgroundColor: '#F5F7FA',
     borderRadius: 8,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   foodItemContent: {
     flex: 1,
@@ -1013,24 +1114,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   foodDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575',
+    marginBottom: 10,
   },
-  consumedFoodList: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 5,
+  foodCalories: {
+    fontSize: 14,
+    color: '#757575',
   },
   consumedFoodItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    padding: 12,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    marginBottom: 8,
   },
   consumedFoodInfo: {
     flex: 1,
@@ -1040,179 +1141,155 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
-  consumedFoodDescription: {
+  consumedFoodDetails: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575',
     marginTop: 2,
   },
-  consumedFoodNutrition: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 4,
+  consumedFoodCalories: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginRight: 5,
   },
   removeButton: {
     padding: 8,
   },
-  emptyListText: {
-    textAlign: 'center',
-    color: '#888',
-    fontSize: 16,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-  },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    maxHeight: '80%',
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: '80%',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  servingSizeLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  servingSizeScroll: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  servingSizeOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  selectedServingSize: {
-    backgroundColor: '#007bff',
-    borderColor: '#007bff',
-  },
-  servingSizeText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  selectedServingSizeText: {
-    color: '#fff',
-  },
-  nutritionInfo: {
-    marginBottom: 15,
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-  },
-  nutritionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  nutritionValue: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 4,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    width: 80,
-    color: '#333',
-  },
-  quantityInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: '#333',
-  },
-  totalCalories: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0a84ff',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalButtons: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
     alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  cancelButton: {
-    backgroundColor: '#f1f2f3',
-    marginRight: 10,
-  },
-  addButton: {
-    backgroundColor: '#4CAF50',
-    marginLeft: 10,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
   },
-  loader: {
-    marginVertical: 30,
+  closeButton: {
+    padding: 4,
   },
-  errorText: {
-    color: '#FF3B30',
-    textAlign: 'center',
-    margin: 20,
-    fontSize: 16,
+  modalScrollContent: {
+    padding: 16,
   },
-  foodTypeContainer: {
-    backgroundColor: '#f1f8ff',
-    paddingVertical: 4,
+  servingContainer: {
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  servingSizesScroll: {
+    marginTop: 10,
+  },
+  servingOption: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 20,
     paddingHorizontal: 12,
-    borderRadius: 16,
-    alignSelf: 'center',
-    marginBottom: 15,
+    paddingVertical: 8,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  foodTypeText: {
+  selectedServingOption: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  servingText: {
     fontSize: 14,
-    color: '#0a84ff',
-    fontWeight: '500',
+    color: '#757575',
   },
-  noServingsText: {
-    textAlign: 'center',
-    color: '#888',
+  selectedServingText: {
+    color: 'white',
+  },
+  nutritionFactsCard: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 15,
+    marginBottom: 20,
+  },
+  nutritionFactsHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
     marginBottom: 15,
-    fontStyle: 'italic',
+  },
+  nutritionFactsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  nutritionFactsLabel: {
+    fontSize: 15,
+    color: '#757575',
+  },
+  nutritionFactsValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  quantityContainer: {
+    marginBottom: 20,
+  },
+  quantityInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  quantityButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  quantityInput: {
+    width: 80,
+    height: 50,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    marginHorizontal: 10,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   detailsButton: {
-    backgroundColor: '#0a84ff',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
@@ -1225,49 +1302,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  progressBarContainer: {
-    height: 20,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  apiInfoContainer: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
-  },
-  apiInfoText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  apiSubInfoText: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-  },
-  diagButton: {
-    backgroundColor: '#007bff',
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  diagButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 16,
+  consumedFoodNutrition: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 4,
   },
 });
 

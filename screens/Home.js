@@ -12,6 +12,7 @@ import { useWaterIntake } from '../context/WaterIntakeContext';
 import { useSteps } from '../context/StepsContext';
 import { useWorkout } from '../context/WorkoutContext';
 import { useNutrition } from '../context/NutritionContext';
+import { useSleep } from '../context/SleepContext';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -118,19 +119,19 @@ const Home = ({ navigation }) => {
   const { steps, dailyGoal: stepsDailyGoal, updateSteps } = useSteps();
   const { workoutPercentage, updateWorkoutPercentage } = useWorkout();
   const { nutritionPercentage, updateNutritionPercentage } = useNutrition();
+  const { sleepQualityPercentage, updateSleepQualityPercentage } = useSleep();
   const { user } = useAuth();
   const [healthMetrics, setHealthMetrics] = useState({
     mental: 0,
-    sleep: 0,
     bloodPressure: '120/80'
   });
   const [forceRender, setForceRender] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage, 'nutrition:', nutritionPercentage);
+      console.log('Home screen focused, water intake:', waterIntake, 'percentage:', percentage, 'steps:', steps, 'workout:', workoutPercentage, 'nutrition:', nutritionPercentage, 'sleep:', sleepQualityPercentage);
       setForceRender(prev => prev + 1);
-    }, [waterIntake, percentage, steps, workoutPercentage, nutritionPercentage])
+    }, [waterIntake, percentage, steps, workoutPercentage, nutritionPercentage, sleepQualityPercentage])
   );
 
   // Calculate steps percentage (similar to water intake percentage)
@@ -152,7 +153,7 @@ const Home = ({ navigation }) => {
     (workoutPercentage * weights.workout) +
     (percentage * weights.water) +
     (healthMetrics.mental * weights.mental) +
-    (healthMetrics.sleep * weights.sleep) +
+    (sleepQualityPercentage * weights.sleep) +
     (stepsPercentage * weights.steps)
   );
 
@@ -181,6 +182,12 @@ const Home = ({ navigation }) => {
       return;
     }
 
+    if (metric === 'sleep') {
+      const sleepValue = Math.min(100, Math.max(0, parseInt(value) || 0));
+      updateSleepQualityPercentage(sleepValue);
+      return;
+    }
+
     let processedValue = value;
     if (metric === 'bloodPressure') {
       processedValue = value.replace(/[^0-9/]/g, '');
@@ -192,7 +199,7 @@ const Home = ({ navigation }) => {
       ...prev,
       [metric]: processedValue
     }));
-  }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage, updateNutritionPercentage]);
+  }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage, updateNutritionPercentage, updateSleepQualityPercentage]);
 
   const renderHeader = () => {
     const firstName = user ? user.displayName?.split(' ')[0] || user.email?.split('@')[0] : 'Guest';
@@ -348,7 +355,7 @@ const Home = ({ navigation }) => {
           unit="%"
           color="#FF006E"
           dark={dark}
-          value={healthMetrics.sleep}
+          value={sleepQualityPercentage}
           onUpdate={updateMetric}
           navigation={navigation}
         />

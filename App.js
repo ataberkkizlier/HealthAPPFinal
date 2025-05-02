@@ -11,6 +11,7 @@ import { AuthProvider } from './context/AuthContext';
 import { StepsProvider } from './context/StepsContext';
 import { WorkoutProvider } from './context/WorkoutContext';
 import { NutritionProvider } from './context/NutritionContext';
+import { SleepProvider } from './context/SleepContext';
 import { auth } from './firebase/config';
 import fatSecretService from './services/FatSecretService';
 
@@ -55,11 +56,13 @@ export default function App() {
         <StepsProvider>
           <WorkoutProvider>
             <NutritionProvider>
-              <ThemeProvider>
-                <SafeAreaProvider onLayout={onLayoutRootView}>
-                  <AppNavigation />
-                </SafeAreaProvider>
-              </ThemeProvider>
+              <SleepProvider>
+                <ThemeProvider>
+                  <SafeAreaProvider onLayout={onLayoutRootView}>
+                    <AppNavigation />
+                  </SafeAreaProvider>
+                </ThemeProvider>
+              </SleepProvider>
             </NutritionProvider>
           </WorkoutProvider>
         </StepsProvider>

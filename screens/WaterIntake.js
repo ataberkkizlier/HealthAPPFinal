@@ -1,14 +1,36 @@
-import React, { useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert, 
+  StatusBar, 
+  ScrollView, 
+  SafeAreaView,
+  Platform
+} from 'react-native';
 import { useWaterIntake } from '../context/WaterIntakeContext';
 import { useAuth } from '../context/AuthContext';
 import { ref, set, update } from 'firebase/database';
 import { database } from '../firebase/config';
+import { COLORS } from '../constants';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function WaterIntake({ navigation }) {
-  const [intake, setIntake] = React.useState('');
-  const { updateWaterIntake, waterIntake, dailyGoal } = useWaterIntake();
+  const [intake, setIntake] = useState('');
+  const { updateWaterIntake, waterIntake, dailyGoal, percentage } = useWaterIntake();
   const { user, userData, saveHealthData, debugWaterIntake } = useAuth();
+  
+  // Calculate the remaining water needed to reach the goal
+  const remainingWater = Math.max(0, dailyGoal - waterIntake);
+  
+  // Calculate glasses of water (assuming 250ml per glass)
+  const glassSize = 250; // ml
+  const glassesDrunk = Math.floor(waterIntake / glassSize);
+  const totalGlasses = Math.ceil(dailyGoal / glassSize);
+  const glassesRemaining = Math.max(0, totalGlasses - glassesDrunk);
 
   // Debug function to help diagnose issues with water intake data
   const debugWaterIntakeData = async () => {
@@ -76,7 +98,7 @@ export default function WaterIntake({ navigation }) {
   // When the user adds water intake, update both the context and save to user's data
   const handleAddIntake = async () => {
     const intakeValue = parseInt(intake);
-    if (!isNaN(intakeValue)) {
+    if (!isNaN(intakeValue) && intakeValue > 0) {
       const newIntake = waterIntake + intakeValue;
       
       // Update the water intake in context
@@ -110,64 +132,166 @@ export default function WaterIntake({ navigation }) {
       }
       
       setIntake('');
+    } else {
+      Alert.alert('Invalid Input', 'Please enter a valid amount of water in ml');
+    }
+  };
+
+  // Quick add buttons for common amounts
+  const quickAdd = (amount) => {
+    const newIntake = waterIntake + amount;
+    updateWaterIntake(newIntake);
+    
+    // Save to user's Firebase data if logged in
+    if (user) {
+      try {
+        saveHealthData({
+          waterIntake: newIntake,
+          lastUpdated: Date.now()
+        });
+      } catch (error) {
+        console.error('Error saving water intake:', error);
+      }
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Daily Water Intake Tracker</Text>
+      <StatusBar barStyle="light-content" />
       
-      {user ? (
-        <View style={styles.userInfoContainer}>
-          <Text style={styles.userInfo}>Tracking for: {user.email}</Text>
-          <Text style={styles.userInfo}>User ID: {user.uid.substring(0, 8)}...</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Water Intake Tracker</Text>
+          <TouchableOpacity 
+            style={styles.resetButton}
+            onPress={resetWaterIntake}
+          >
+            <Ionicons name="refresh" size={22} color="white" />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <Text style={styles.guestWarning}>Guest Mode - Sign in to save your data</Text>
-      )}
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Enter amount of water (ml)"
-        keyboardType="numeric"
-        value={intake}
-        onChangeText={setIntake}
-      />
-      
-      <TouchableOpacity style={styles.addButton} onPress={handleAddIntake}>
-        <Text style={styles.addButtonText}>Add</Text>
-      </TouchableOpacity>
-      
-      <Text style={styles.result}>
-        Total Water Intake: {waterIntake} ml / {dailyGoal} ml
-      </Text>
-      
-      <View style={styles.progressContainer}>
-        <View 
-          style={[
-            styles.progressBar, 
-            { width: `${Math.min(100, (waterIntake / dailyGoal) * 100)}%` }
-          ]} 
-        />
       </View>
       
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.backButtonText}>Back to Home</Text>
-        </TouchableOpacity>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Progress Summary */}
+        <View style={styles.summaryCard}>
+          <View style={styles.progressHeader}>
+            <View style={styles.progressInfo}>
+              <Text style={styles.progressTitle}>Today's Water Intake</Text>
+              <View style={styles.progressValues}>
+                <Text style={styles.intakeValue}>{waterIntake}</Text>
+                <Text style={styles.goalValue}> / {dailyGoal} ml</Text>
+              </View>
+            </View>
+            <View style={styles.circleProgressContainer}>
+              <View style={styles.circleProgress}>
+                <Text style={styles.percentageText}>{percentage}%</Text>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarTrack}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { width: `${Math.min(100, percentage)}%` }
+                ]} 
+              />
+            </View>
+          </View>
+          
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{glassesDrunk}</Text>
+              <Text style={styles.statLabel}>Glasses Drunk</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{glassesRemaining}</Text>
+              <Text style={styles.statLabel}>Glasses Left</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{remainingWater}</Text>
+              <Text style={styles.statLabel}>ml Remaining</Text>
+            </View>
+          </View>
+        </View>
         
-        {user && (
-          <View style={{flexDirection: 'row'}}>
-            <TouchableOpacity style={styles.resetButton} onPress={resetWaterIntake}>
-              <Text style={styles.resetButtonText}>Reset</Text>
+        {/* Add Water Section */}
+        <View style={styles.addWaterCard}>
+          <Text style={styles.sectionTitle}>Add Water</Text>
+          
+          <View style={styles.quickAddContainer}>
+            <TouchableOpacity 
+              style={styles.quickAddButton} 
+              onPress={() => quickAdd(100)}
+            >
+              <Text style={styles.quickAddText}>100ml</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.debugButton} onPress={debugWaterIntakeData}>
-              <Text style={styles.debugButtonText}>Debug</Text>
+            <TouchableOpacity 
+              style={styles.quickAddButton} 
+              onPress={() => quickAdd(250)}
+            >
+              <Text style={styles.quickAddText}>250ml</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAddButton} 
+              onPress={() => quickAdd(500)}
+            >
+              <Text style={styles.quickAddText}>500ml</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+          
+          <Text style={styles.customAddLabel}>Custom Amount:</Text>
+          <View style={styles.customAddContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter ml"
+              keyboardType="numeric"
+              value={intake}
+              onChangeText={setIntake}
+              placeholderTextColor="#9E9E9E"
+            />
+            <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={handleAddIntake}
+            >
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Recommendations */}
+        <View style={styles.recommendationsCard}>
+          <View style={styles.recommendationHeader}>
+            <Ionicons name="water-outline" size={22} color={COLORS.primary} style={styles.recommendationIcon} />
+            <Text style={styles.recommendationTitle}>Hydration Tips</Text>
+          </View>
+          
+          <View style={styles.recommendationItem}>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+            <Text style={styles.recommendationText}>Drink 8-10 glasses (2-2.5 liters) of water per day</Text>
+          </View>
+          
+          <View style={styles.recommendationItem}>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+            <Text style={styles.recommendationText}>Carry a water bottle with you throughout the day</Text>
+          </View>
+          
+          <View style={styles.recommendationItem}>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+            <Text style={styles.recommendationText}>Set reminders to drink water every 1-2 hours</Text>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -175,115 +299,238 @@ export default function WaterIntake({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#F5F7FA',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 15,
   },
-  userInfoContainer: {
-    marginBottom: 15,
-    alignItems: 'center',
-  },
-  userInfo: {
-    fontSize: 16,
-    color: '#007bff',
-    marginBottom: 5,
-  },
-  guestWarning: {
-    fontSize: 16,
-    marginBottom: 15,
-    color: '#ff7700',
-    fontStyle: 'italic',
-  },
-  input: {
-    height: 50,
-    width: '100%',
-    borderColor: '#007bff',
-    borderWidth: 2,
-    borderRadius: 10,
-    marginBottom: 20,
-    paddingHorizontal: 15,
-    fontSize: 18,
-  },
-  addButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  result: {
-    marginTop: 20,
-    fontSize: 22,
-    color: '#333',
-  },
-  progressContainer: {
-    width: '100%',
-    height: 20,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 10,
-    marginTop: 15,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#007bff',
-  },
-  buttonContainer: {
+  headerContent: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 30,
+    paddingHorizontal: 16,
   },
   backButton: {
-    backgroundColor: '#ccc',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flex: 1,
-    marginRight: 10,
-    alignItems: 'center',
+    padding: 8,
   },
-  backButtonText: {
-    color: '#333',
-    fontSize: 18,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: 'white',
   },
   resetButton: {
-    backgroundColor: '#ff3b30',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginLeft: 10,
+    padding: 8,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+  },
+  summaryCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  progressInfo: {
+    flex: 1,
+  },
+  progressTitle: {
+    fontSize: 16,
+    color: '#757575',
+    marginBottom: 5,
+  },
+  progressValues: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  intakeValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  goalValue: {
+    fontSize: 18,
+    color: '#757575',
+  },
+  circleProgressContainer: {
+    width: 70,
+    height: 70,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  debugButton: {
-    backgroundColor: '#5856d6',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginLeft: 10,
+  circleProgress: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 5,
+    borderColor: COLORS.primary,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  debugButtonText: {
-    color: '#fff',
+  percentageText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  progressBarContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  progressBarTrack: {
+    height: 10,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#757575',
+    marginTop: 5,
+  },
+  statDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#E0E0E0',
+  },
+  addWaterCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+  },
+  quickAddContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  quickAddButton: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  quickAddText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  customAddLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 10,
+  },
+  customAddContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    marginRight: 10,
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    height: 50,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  recommendationsCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  recommendationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  recommendationIcon: {
+    marginRight: 8,
+  },
+  recommendationTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  recommendationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recommendationText: {
+    fontSize: 14,
+    color: '#616161',
+    marginLeft: 10,
+    flex: 1,
   }
 });
