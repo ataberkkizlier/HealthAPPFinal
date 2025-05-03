@@ -50,11 +50,12 @@ export const NutritionProvider = ({ children }) => {
     useEffect(() => {
         if (!userData) return;
         
-        const { weight, height, age, gender, activityLevel } = userData;
+        const { weight, height, age, gender, activityLevel, weightGoal } = userData;
         
         // Check if we have all required data to calculate a nutrition plan
         if (weight && height && age && gender) {
             const activityLevelValue = activityLevel || 'moderate'; // Default to moderate if not set
+            const weightGoalValue = weightGoal || 'Maintain'; // Default to maintain if not set
             
             // Calculate nutrition plan
             const plan = getNutritionPlan(
@@ -62,13 +63,14 @@ export const NutritionProvider = ({ children }) => {
                 parseFloat(height),
                 parseInt(age),
                 gender.toLowerCase(),
-                activityLevelValue
+                activityLevelValue,
+                weightGoalValue
             );
             
             setNutritionPlan(plan);
             
             // Update targets
-            setCalorieTarget(plan.dailyCalories);
+            setCalorieTarget(plan.adjustedCalories || plan.dailyCalories);
             setProteinTarget(plan.nutrientGoals.protein);
             setCarbsTarget(plan.nutrientGoals.carbs);
             setFatTarget(plan.nutrientGoals.fat);

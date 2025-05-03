@@ -115,12 +115,13 @@ export const calculateDailyCalories = (bmr, activityLevel = 'moderate') => {
 };
 
 /**
- * Calculate daily nutrient goals based on calorie needs and BMI category
+ * Calculate daily nutrient goals based on calorie needs, BMI category, and weight goal
  * @param {number} dailyCalories Daily calorie needs
  * @param {string} bmiCategory BMI category (underweight, normal, overweight, obese, severely_obese)
+ * @param {string} weightGoal Weight goal (Lose, Maintain, Gain)
  * @returns {Object} Protein, carbs, and fat goals in grams
  */
-export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
+export const calculateNutrientGoals = (dailyCalories, bmiCategory, weightGoal = 'Maintain') => {
   if (!dailyCalories || dailyCalories <= 0) {
     return { protein: 0, carbs: 0, fat: 0 };
   }
@@ -130,7 +131,7 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
   let carbPercentage = 0.5; // 50% of calories from carbs
   let fatPercentage = 0.3; // 30% of calories from fat
   
-  // Adjust macronutrient distribution based on BMI category
+  // First, adjust based on BMI category
   switch (bmiCategory) {
     case BMI_CATEGORIES.UNDERWEIGHT:
       // Higher calories, more protein to build muscle
@@ -166,6 +167,34 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
       break;
   }
   
+  // Then, adjust based on weight goal
+  switch (weightGoal) {
+    case 'Lose':
+      // For weight loss: increase protein to preserve muscle, reduce carbs and fat
+      // Higher protein helps with satiety and preserving muscle mass
+      proteinPercentage += 0.05; // +5%
+      carbPercentage -= 0.05; // -5%
+      
+      // Adjust total calories (caloric deficit for weight loss)
+      dailyCalories = Math.round(dailyCalories * 0.8); // 20% caloric deficit
+      break;
+      
+    case 'Gain':
+      // For weight gain: increase overall calories, emphasize carbs for energy
+      // Adequate protein for muscle building
+      carbPercentage += 0.05; // +5%
+      fatPercentage -= 0.05; // -5%
+      
+      // Adjust total calories (caloric surplus for weight gain)
+      dailyCalories = Math.round(dailyCalories * 1.15); // 15% caloric surplus
+      break;
+      
+    case 'Maintain':
+    default:
+      // Maintain current macronutrient distribution
+      break;
+  }
+  
   // Calculate grams of each macronutrient
   // Protein: 4 calories per gram
   // Carbs: 4 calories per gram
@@ -181,7 +210,8 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
   return {
     protein: proteinGrams,
     carbs: carbGrams,
-    fat: fatGrams
+    fat: fatGrams,
+    adjustedCalories: dailyCalories
   };
 };
 
@@ -192,9 +222,10 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory) => {
  * @param {number} age Age in years
  * @param {string} gender 'male' or 'female'
  * @param {string} activityLevel Activity level (sedentary, light, moderate, active, very_active)
+ * @param {string} weightGoal Weight goal (Lose, Maintain, Gain)
  * @returns {Object} Nutrition plan with BMI, category, calories, and nutrient goals
  */
-export const getNutritionPlan = (weightKg, heightCm, age, gender, activityLevel = 'moderate') => {
+export const getNutritionPlan = (weightKg, heightCm, age, gender, activityLevel = 'moderate', weightGoal = 'Maintain') => {
   // Calculate BMI
   const bmi = calculateBMI(weightKg, heightCm);
   const bmiCategory = getBMICategory(bmi);
@@ -204,13 +235,15 @@ export const getNutritionPlan = (weightKg, heightCm, age, gender, activityLevel 
   const dailyCalories = calculateDailyCalories(bmr, activityLevel);
   
   // Calculate nutrient goals
-  const nutrientGoals = calculateNutrientGoals(dailyCalories, bmiCategory);
+  const nutrientGoals = calculateNutrientGoals(dailyCalories, bmiCategory, weightGoal);
   
   return {
     bmi,
     bmiCategory,
     bmr,
     dailyCalories,
+    weightGoal,
+    adjustedCalories: nutrientGoals.adjustedCalories || dailyCalories,
     nutrientGoals
   };
 };

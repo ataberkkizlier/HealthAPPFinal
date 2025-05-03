@@ -34,6 +34,7 @@ const Profile = ({ navigation }) => {
     const refRBSheet = useRef()
     const genderSheet = useRef()
     const activitySheet = useRef()
+    const weightGoalSheet = useRef()
     const { dark, colors, setScheme } = useTheme()
     const { user, userData, saveHealthData, profileImage, updateProfileImage } = useAuth()
     const { nutritionPlan } = useNutrition()
@@ -42,6 +43,7 @@ const Profile = ({ navigation }) => {
     const [userEmail, setUserEmail] = useState('')
     const [gender, setGender] = useState('Male')
     const [activityLevel, setActivityLevel] = useState('Moderate')
+    const [weightGoal, setWeightGoal] = useState('Maintain')
     const [loading, setLoading] = useState(false)
     const [userImage, setUserImage] = useState(null)
     const [uploadingImage, setUploadingImage] = useState(false)
@@ -56,7 +58,6 @@ const Profile = ({ navigation }) => {
     const [age, setAge] = useState('')
     const [weight, setWeight] = useState('')
     const [height, setHeight] = useState('')
-    const [bloodPressure, setBloodPressure] = useState('')
     
     // BMI calculation 
     const bmi = weight && height 
@@ -72,6 +73,13 @@ const Profile = ({ navigation }) => {
         { value: 'Moderate', description: 'Moderate exercise 3-5 days/week' },
         { value: 'Active', description: 'Heavy exercise 6-7 days/week' },
         { value: 'Very Active', description: 'Very heavy exercise, physical job or training twice a day' },
+    ];
+
+    // Weight goal options
+    const weightGoalOptions = [
+        { value: 'Lose', description: 'Lose weight' },
+        { value: 'Maintain', description: 'Maintain current weight' },
+        { value: 'Gain', description: 'Gain weight' },
     ];
 
     // Handle dark mode toggle
@@ -121,10 +129,10 @@ const Profile = ({ navigation }) => {
             setAge(userData.age?.toString() || '')
             setWeight(userData.weight?.toString() || '')
             setHeight(userData.height?.toString() || '')
-            setBloodPressure(userData.bloodPressure || '')
             
             setGender(userData.gender || 'Male')
             setActivityLevel(userData.activityLevel || 'Moderate')
+            setWeightGoal(userData.weightGoal || 'Maintain')
             
             // If we have fullName in userData but display name is 'User', update it
             if (userData.fullName && (!user.displayName || user.displayName === 'User')) {
@@ -186,10 +194,10 @@ const Profile = ({ navigation }) => {
             const healthData = {
                 weight: weight ? parseFloat(weight) : null,
                 height: height ? parseFloat(height) : null,
-                bloodPressure: bloodPressure,
                 age: age ? parseInt(age) : null,
                 gender,
                 activityLevel,
+                weightGoal,
             }
             
             const result = await saveHealthData(healthData)
@@ -449,61 +457,118 @@ const Profile = ({ navigation }) => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContainer, {backgroundColor: dark ? COLORS.dark2 : COLORS.white}]}>
-                        <Text style={[styles.modalTitle, {color: dark ? COLORS.white : COLORS.black}]}>
-                            Your Health Profile
-                        </Text>
-                        
-                        <View style={styles.bmiCircle}>
-                            <Text style={styles.bmiValue}>{bmi}</Text>
-                            <Text style={styles.bmiLabel}>BMI</Text>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                                Your Health Profile
+                            </Text>
                         </View>
                         
-                        <Text style={[styles.bmiStatus, {
-                            color: bmi > 0 ? getBmiStatusColor(bmiCategory) : COLORS.gray
-                        }]}>
-                            {bmi > 0 ? bmiInfo.status : 'Unknown'}
-                        </Text>
-                        
-                        <Text style={[styles.bmiDescription, {color: dark ? COLORS.white : COLORS.black}]}>
-                            {bmiInfo.description}
-                        </Text>
-                        
-                        <View style={styles.nutritionPlanContainer}>
-                            <Text style={[styles.nutritionTitle, {color: dark ? COLORS.white : COLORS.black}]}>
-                                Daily Nutrition Goals:
-                            </Text>
-                            
-                            {nutritionPlan ? (
-                                <View style={styles.nutrientGoalsContainer}>
-                                    <View style={styles.nutrientItem}>
-                                        <Text style={styles.nutrientLabel}>Calories:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.dailyCalories} kcal</Text>
-                                    </View>
-                                    <View style={styles.nutrientItem}>
-                                        <Text style={styles.nutrientLabel}>Protein:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.protein}g</Text>
-                                    </View>
-                                    <View style={styles.nutrientItem}>
-                                        <Text style={styles.nutrientLabel}>Carbs:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.carbs}g</Text>
-                                    </View>
-                                    <View style={styles.nutrientItem}>
-                                        <Text style={styles.nutrientLabel}>Fat:</Text>
-                                        <Text style={styles.nutrientValue}>{nutritionPlan.nutrientGoals.fat}g</Text>
-                                    </View>
+                        <View style={styles.contentContainer}>
+                            {/* BMI Section */}
+                            <View style={styles.bmiSection}>
+                                <View style={[styles.bmiCircle, {backgroundColor: getBmiStatusColor(bmiCategory)}]}>
+                                    <Text style={styles.bmiValue}>{bmi}</Text>
+                                    <Text style={styles.bmiLabel}>BMI</Text>
                                 </View>
-                            ) : (
-                                <Text style={styles.noNutritionPlan}>
-                                    Nutrition plan will be calculated based on your profile
+                                
+                                <View style={styles.bmiDetails}>
+                                    <Text style={[styles.bmiCategory, {color: getBmiStatusColor(bmiCategory)}]}>
+                                        {bmi > 0 ? bmiInfo.status : 'Unknown'}
+                                    </Text>
+                                    <Text style={[styles.bmiDescription, {color: dark ? COLORS.white : '#333'}]}>
+                                        {bmiInfo.description}
+                                    </Text>
+                                </View>
+                            </View>
+                            
+                            {/* Weight Goal Section */}
+                            <View style={styles.goalSection}>
+                                <View style={[styles.goalHeader, 
+                                    {borderLeftColor: weightGoal === 'Lose' ? '#FF6B6B' : 
+                                        weightGoal === 'Gain' ? '#4CAF50' : '#3498DB'}
+                                ]}>
+                                    <MaterialIcons 
+                                        name={weightGoal === 'Lose' ? 'trending-down' : 
+                                            weightGoal === 'Gain' ? 'trending-up' : 'trending-flat'} 
+                                        size={22} 
+                                        color={weightGoal === 'Lose' ? '#FF6B6B' : 
+                                            weightGoal === 'Gain' ? '#4CAF50' : '#3498DB'} 
+                                    />
+                                    <Text style={styles.goalTitle}>
+                                        Weight Goal: 
+                                        <Text style={[styles.goalValue, 
+                                            {color: weightGoal === 'Lose' ? '#FF6B6B' : 
+                                                weightGoal === 'Gain' ? '#4CAF50' : '#3498DB'}
+                                        ]}> {weightGoal}</Text>
+                                    </Text>
+                                </View>
+                                <Text style={styles.goalDescription}>
+                                    {weightGoal === 'Lose' 
+                                        ? 'Your macros are adjusted to support weight loss with higher protein to preserve muscle mass and a calorie deficit.'
+                                        : weightGoal === 'Gain'
+                                        ? 'Your macros are adjusted to support weight gain with additional calories and balanced nutrients for muscle growth.'
+                                        : 'Your macros are balanced to support maintaining your current weight with optimal nutrition.'}
                                 </Text>
-                            )}
+                            </View>
+                            
+                            {/* Nutrition Goals Section */}
+                            <View style={styles.nutritionSection}>
+                                <Text style={styles.sectionTitle}>
+                                    Daily Nutrition Goals
+                                </Text>
+                                
+                                {nutritionPlan ? (
+                                    <View>
+                                        {/* Calories */}
+                                        <View style={styles.nutrientRow}>
+                                            <Text style={styles.nutrientLabel}>Calories:</Text>
+                                            <View style={styles.calorieValueContainer}>
+                                                <Text style={[styles.calorieValue, {color: '#FF9800'}]}>
+                                                    {nutritionPlan.adjustedCalories || nutritionPlan.dailyCalories} kcal
+                                                </Text>
+                                                {nutritionPlan.adjustedCalories !== nutritionPlan.dailyCalories && (
+                                                    <Text style={styles.calorieAdjustment}>
+                                                        (adjusted for {weightGoal.toLowerCase()} goal)
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </View>
+                                        
+                                        {/* Macronutrients */}
+                                        <View style={styles.nutrientRow}>
+                                            <Text style={styles.nutrientLabel}>Protein:</Text>
+                                            <Text style={[styles.nutrientValue, {color: '#4CAF50'}]}>
+                                                {nutritionPlan.nutrientGoals.protein}g
+                                            </Text>
+                                        </View>
+                                        
+                                        <View style={styles.nutrientRow}>
+                                            <Text style={styles.nutrientLabel}>Carbs:</Text>
+                                            <Text style={[styles.nutrientValue, {color: '#2196F3'}]}>
+                                                {nutritionPlan.nutrientGoals.carbs}g
+                                            </Text>
+                                        </View>
+                                        
+                                        <View style={styles.nutrientRow}>
+                                            <Text style={styles.nutrientLabel}>Fat:</Text>
+                                            <Text style={[styles.nutrientValue, {color: '#FF9800'}]}>
+                                                {nutritionPlan.nutrientGoals.fat}g
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.noDataText}>
+                                        Nutrition plan will be calculated based on your profile
+                                    </Text>
+                                )}
+                            </View>
                         </View>
                         
                         <TouchableOpacity 
-                            style={styles.modalButton}
+                            style={styles.closeButton}
                             onPress={() => setShowBmiInfo(false)}
                         >
-                            <Text style={styles.modalButtonText}>Close</Text>
+                            <Text style={styles.closeButtonText}>Close</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -614,6 +679,50 @@ const Profile = ({ navigation }) => {
                             </Text>
                             <Text style={styles.sheetOptionDescription}>
                                 {level.description}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </RNScrollView>
+            </RBSheet>
+        );
+    };
+    
+    // Weight goal selection bottom sheet
+    const renderWeightGoalSheet = () => {
+        return (
+            <RBSheet
+                ref={weightGoalSheet}
+                closeOnDragDown={true}
+                closeOnPressMask={true}
+                height={300}
+                customStyles={{
+                    wrapper: { backgroundColor: 'rgba(0,0,0,0.5)' },
+                    draggableIcon: { backgroundColor: dark ? COLORS.gray2 : COLORS.grayscale200 },
+                    container: {
+                        borderTopRightRadius: 20, 
+                        borderTopLeftRadius: 20,
+                        backgroundColor: dark ? COLORS.dark2 : COLORS.white
+                    }
+                }}
+            >
+                <RNScrollView>
+                    <Text style={[styles.sheetTitle, {color: dark ? COLORS.white : COLORS.black}]}>
+                        Select Weight Goal
+                    </Text>
+                    {weightGoalOptions.map((option, index) => (
+                        <TouchableOpacity 
+                            key={index}
+                            style={[styles.sheetOption, weightGoal === option.value && styles.selectedOption]}
+                            onPress={() => {
+                                setWeightGoal(option.value);
+                                weightGoalSheet.current.close();
+                            }}
+                        >
+                            <Text style={[styles.sheetOptionText, weightGoal === option.value && styles.selectedOptionText]}>
+                                {option.value}
+                            </Text>
+                            <Text style={styles.sheetOptionDescription}>
+                                {option.description}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -819,7 +928,6 @@ const Profile = ({ navigation }) => {
     const ageInputRef = useRef(null);
     const weightInputRef = useRef(null);
     const heightInputRef = useRef(null);
-    const bpInputRef = useRef(null);
 
     // Render Android name edit modal
     const renderNameEditModal = () => {
@@ -968,24 +1076,16 @@ const Profile = ({ navigation }) => {
                         <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
                     </TouchableOpacity>
                     
-                    <Text style={styles.label}>Blood Pressure</Text>
-                    <TextInput
-                        ref={bpInputRef}
-                        style={{
-                            height: 50,
-                            borderColor: '#E0E0E0',
-                            borderWidth: 1,
-                            borderRadius: 8,
-                            paddingHorizontal: 15,
-                            backgroundColor: '#FFFFFF',
-                            fontSize: 16,
-                            marginBottom: 15,
-                            color: '#000000',
-                        }}
-                        defaultValue={bloodPressure}
-                        keyboardType="number-pad"
-                        onEndEditing={(e) => setBloodPressure(e.nativeEvent.text)}
-                    />
+                    <Text style={styles.label}>Weight Goal</Text>
+                    <TouchableOpacity 
+                        style={[styles.input, styles.selectInput, { backgroundColor: '#FFFFFF' }]}
+                        onPress={() => weightGoalSheet.current.open()}
+                    >
+                        <Text style={[styles.selectText, {color: dark ? COLORS.dark : COLORS.black}]}>
+                            {weightGoal || 'Select weight goal'}
+                        </Text>
+                        <MaterialIcons name="arrow-drop-down" size={24} color={dark ? COLORS.dark : COLORS.black} />
+                    </TouchableOpacity>
                     
                     {bmi > 0 && (
                         <TouchableOpacity 
@@ -1030,6 +1130,7 @@ const Profile = ({ navigation }) => {
             
             {renderGenderSheet()}
             {renderActivitySheet()}
+            {renderWeightGoalSheet()}
             {renderBmiInfoModal()}
             {renderNameEditModal()}
             
@@ -1441,132 +1542,167 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalContainer: {
-        width: '85%',
+        width: '90%',
+        maxHeight: '85%',
         backgroundColor: COLORS.white,
-        borderRadius: 12,
-        padding: 20,
+        borderRadius: 20,
+        overflow: 'hidden',
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        shadowRadius: 4,
+    },
+    modalHeader: {
+        padding: 18,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
-        marginBottom: 15,
         textAlign: 'center',
     },
-    modalInput: {
-        padding: 12,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        marginBottom: 15,
+    contentContainer: {
+        padding: 18,
     },
-    modalButtons: {
+    
+    // BMI Section
+    bmiSection: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    modalButton: {
-        backgroundColor: COLORS.primary,
-        borderRadius: 10,
-        padding: 12,
         alignItems: 'center',
-        flex: 0.48,
-    },
-    modalButtonText: {
-        color: COLORS.white,
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    cancelButton: {
-        backgroundColor: COLORS.greyscale300,
+        marginBottom: 24,
     },
     bmiCircle: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     bmiValue: {
-        fontSize: 30,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: COLORS.white,
+        color: '#fff',
     },
     bmiLabel: {
         fontSize: 14,
-        color: COLORS.white,
-        opacity: 0.8,
+        color: '#fff',
+        opacity: 0.9,
     },
-    bmiStatus: {
+    bmiDetails: {
+        flex: 1,
+        paddingLeft: 16,
+    },
+    bmiCategory: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     bmiDescription: {
         fontSize: 14,
-        textAlign: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 10,
+        lineHeight: 20,
     },
-    nutritionPlanContainer: {
-        width: '100%',
-        marginTop: 5,
-        marginBottom: 15,
+    
+    // Weight Goal Section
+    goalSection: {
+        backgroundColor: '#f9f9f9',
+        borderRadius: 14,
+        marginBottom: 24,
+        overflow: 'hidden',
     },
-    nutritionTitle: {
-        fontSize: 18,
+    goalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        backgroundColor: '#f4f4f4',
+        borderLeftWidth: 5,
+    },
+    goalTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
+    goalValue: {
         fontWeight: 'bold',
-        marginBottom: 10,
     },
-    nutrientGoalsContainer: {
-        width: '100%',
+    goalDescription: {
+        fontSize: 14,
+        lineHeight: 20,
+        padding: 14,
+        paddingTop: 10,
+        color: '#555',
     },
-    nutrientItem: {
+    
+    // Nutrition Section
+    nutritionSection: {
+        backgroundColor: '#f9f9f9',
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        padding: 14,
+        backgroundColor: '#f4f4f4',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    nutrientRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 8,
+        alignItems: 'center',
+        padding: 14,
+        paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
     nutrientLabel: {
-        fontSize: 16,
-        color: COLORS.gray,
+        fontSize: 15,
+        color: '#333',
+        fontWeight: '500',
     },
     nutrientValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: COLORS.primary,
     },
-    noNutritionPlan: {
-        fontSize: 14,
-        color: COLORS.gray,
-        fontStyle: 'italic',
+    calorieValueContainer: {
+        alignItems: 'flex-end',
+    },
+    calorieValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    calorieAdjustment: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 2,
+    },
+    noDataText: {
         textAlign: 'center',
+        color: '#666',
+        fontStyle: 'italic',
+        padding: 20,
     },
-    // Keyboard styles
-    keyboardDismissButton: {
-        position: 'absolute',
-        right: 20,
-        bottom: 30,
+    
+    // Button
+    closeButton: {
         backgroundColor: COLORS.primary,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        zIndex: 999,
+        marginHorizontal: 18,
+        marginBottom: 18,
+        paddingVertical: 12,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    keyboardDismissText: {
-        color: COLORS.white,
+    closeButtonText: {
+        color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -1594,6 +1730,20 @@ const styles = StyleSheet.create({
         fontSize: 16,
         flex: 1,
         borderWidth: 0,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    modalButton: {
+        backgroundColor: COLORS.primary,
+        borderRadius: 10,
+        padding: 12,
+        alignItems: 'center',
+        flex: 0.48,
+    },
+    cancelButton: {
+        backgroundColor: COLORS.greyscale300,
     },
 })
 
