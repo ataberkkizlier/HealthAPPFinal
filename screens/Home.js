@@ -141,6 +141,7 @@ const Home = ({ navigation }) => {
   });
   const [forceRender, setForceRender] = useState(0);
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [selectedDoctorCategory, setSelectedDoctorCategory] = useState("1");
 
   useFocusEffect(
     useCallback(() => {
@@ -469,8 +470,6 @@ const Home = ({ navigation }) => {
   };
 
   const renderTopDoctors = () => {
-    const [selectedCategory, setSelectedCategory] = useState("1");
-    
     // Health metrics categories to match the image
     const doctorCategories = [
       { id: "1", name: "All" },
@@ -486,7 +485,7 @@ const Home = ({ navigation }) => {
 
     // Filter doctors based on selected category
     const filteredDoctors = useMemo(() => {
-      if (selectedCategory === "1") {
+      if (selectedDoctorCategory === "1") {
         // If "All" is selected, show all doctors
         return recommendedDoctors;
       }
@@ -503,13 +502,13 @@ const Home = ({ navigation }) => {
         "9": ["Specialist"]
       };
       
-      const allowedTypes = categoryTypeMap[selectedCategory] || [];
+      const allowedTypes = categoryTypeMap[selectedDoctorCategory] || [];
       
       return recommendedDoctors.filter(doctor => 
         allowedTypes.includes(doctor.type) ||
         (doctor.speciality && allowedTypes.includes(doctor.speciality))
       );
-    }, [selectedCategory]);
+    }, [selectedDoctorCategory]);
 
     return (
       <View>
@@ -528,12 +527,12 @@ const Home = ({ navigation }) => {
               <TouchableOpacity
                 style={[
                   styles.categoryFilter,
-                  selectedCategory === item.id && styles.selectedCategoryFilter
+                  selectedDoctorCategory === item.id && styles.selectedCategoryFilter
                 ]}
-                onPress={() => setSelectedCategory(item.id)}>
+                onPress={() => setSelectedDoctorCategory(item.id)}>
                 <Text style={[
                   styles.categoryFilterText,
-                  selectedCategory === item.id && styles.selectedCategoryFilterText
+                  selectedDoctorCategory === item.id && styles.selectedCategoryFilterText
                 ]}>
                   {item.name}
                 </Text>
@@ -824,24 +823,31 @@ const styles = StyleSheet.create({
     fontFamily: 'regular',
     color: COLORS.greyscale900
   },
+  categoryFilterWrapper: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
   categoryFilter: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    margin: 4,
-    borderColor: COLORS.primary,
-    borderWidth: 1.3,
-    borderRadius: 24,
+    marginRight: 10,
+    borderRadius: 20,
     backgroundColor: COLORS.secondaryWhite,
+    borderWidth: 1,
+    borderColor: COLORS.grayscale100,
   },
   selectedCategoryFilter: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   categoryFilterText: {
+    color: COLORS.gray,
     fontFamily: 'medium',
-    color: COLORS.primary,
+    fontSize: 14,
   },
   selectedCategoryFilterText: {
     color: COLORS.white,
+    fontFamily: 'bold',
   },
   doctorsList: {
     marginVertical: 16,
@@ -853,9 +859,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
-  },
-  categoryFilterWrapper: {
-    marginBottom: 8,
   },
   notificationDot: {
     width: 10,
