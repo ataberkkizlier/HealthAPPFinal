@@ -16,6 +16,8 @@ import { useSleep } from '../context/SleepContext';
 import { useMentalHealth } from '../context/MentalHealthContext';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
+import FloatingChatButton from '../components/FloatingChatButton';
+import ChatBotModal from '../components/ChatBotModal';
 
 const MetricCard = React.memo(({
   icon,
@@ -138,6 +140,7 @@ const Home = ({ navigation }) => {
     bloodPressure: '120/80'
   });
   const [forceRender, setForceRender] = useState(0);
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -216,6 +219,35 @@ const Home = ({ navigation }) => {
       [metric]: processedValue
     }));
   }, [dailyGoal, updateWaterIntake, updateSteps, updateWorkoutPercentage, updateNutritionPercentage, updateSleepQualityPercentage]);
+
+  // Collect health data for the chatbot
+  const healthData = {
+    overallScore,
+    waterIntake: {
+      percentage,
+      value: waterIntake,
+      goal: dailyGoal
+    },
+    steps: {
+      value: steps,
+      goal: stepsDailyGoal,
+      percentage: stepsPercentage
+    },
+    workout: {
+      percentage: workoutPercentage
+    },
+    nutrition: {
+      percentage: nutritionPercentage
+    },
+    sleep: {
+      percentage: sleepQualityPercentage
+    },
+    mentalHealth: {
+      percentage: mentalHealthPercentage,
+      status: mentalHealthStatus,
+      needsAssessment: needsNewAssessment
+    }
+  };
 
   const renderHeader = () => {
     const firstName = user ? user.displayName?.split(' ')[0] || user.email?.split('@')[0] : 'Guest';
@@ -535,16 +567,28 @@ const Home = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.area, { backgroundColor: colors.background }]}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: dark ? COLORS.dark : COLORS.white }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {renderHeader()}
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1, paddingHorizontal: 16 }}>
           {renderSearchBar()}
           {renderHealthMetrics()}
           {renderCategories()}
           {renderTopDoctors()}
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
+      
+      {/* Floating Chat Button */}
+      <FloatingChatButton 
+        onPress={() => setChatModalVisible(true)} 
+      />
+      
+      {/* Chat Bot Modal */}
+      <ChatBotModal 
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+        healthData={healthData}
+      />
     </SafeAreaView>
   );
 };

@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { AntDesign } from "@expo/vector-icons";
 import { COLORS } from '../constants';
 
 const Rating = ({ color }) => {
   const [rating, setRating] = useState(0);
+  const isMounted = useRef(true);
+
+  // Set up cleanup when component unmounts
+  useEffect(() => {
+    // When component mounts, set isMounted to true
+    isMounted.current = true;
+    
+    // Cleanup function runs when component unmounts
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const handleRating = (value) => {
-    setRating(value);
+    // Only update state if component is still mounted
+    if (isMounted.current) {
+      setRating(value);
+    }
   };
 
   const renderRatingIcons = () => {

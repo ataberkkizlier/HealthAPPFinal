@@ -256,7 +256,7 @@ export const recommendedDoctors = [
     {
         id: "2",
         name: "Dr. Emily Faint",
-        type: "Physical Therapist",
+        type: "Dietitian",
         image: images.doctor22,
         distance: "1.2 km",
         consultationFee: "$150.00",
@@ -264,12 +264,12 @@ export const recommendedDoctors = [
         numReviews: "1k",
         hospital: "Green Valley Clinic",
         isAvailable: false,
-        categoryId: "3",
-        speciality: "Physical Therapist",
+        categoryId: "2",
+        speciality: "Dietitian",
         patients: 1000,
         yearsExperience: 7,
         workingTime: "Mon-Fri: 9am-5pm",
-        description: "Dr. Emily Faint specializes in physical therapy and workout coaching.",
+        description: "Dr. Emily Faint specializes in dietary planning and nutrition therapy.",
     },
     {
         id: "3",
@@ -337,7 +337,7 @@ export const recommendedDoctors = [
         hospital: "Neurology Specialists Clinic",
         isAvailable: true,
         categoryId: "2",
-        speciality: "Nutritionist",
+        speciality: "Clinical Nutritionist",
         yearsExperience: 12,
         patients: 1500,
         workingTime: "Mon-Fri: 9am-5pm",
@@ -364,7 +364,7 @@ export const recommendedDoctors = [
     {
         id: "8",
         name: "Dr. Andrew Hopkin",
-        type: "Psychiatrist",
+        type: "Fitness Trainer",
         image: images.doctor8,
         distance: "1.8 km",
         consultationFee: "$230.00",
@@ -372,17 +372,17 @@ export const recommendedDoctors = [
         numReviews: "1.4k",
         hospital: "Health and Wellness Clinic",
         isAvailable: false,
-        categoryId: "5",
-        speciality: "Psychiatrist",
+        categoryId: "3",
+        speciality: "Fitness Trainer",
         yearsExperience: 15,
         patients: 1400,
         workingTime: "Mon-Fri: 7am-8pm",
-        description: "Dr. Andrew Hopkin is a certified psychiatrist specializing in mental health treatment."
+        description: "Dr. Andrew Hopkin is a certified fitness trainer specializing in holistic wellness."
     },
     {
         id: "9",
         name: "Dr. Maria Gonzalez",
-        type: "Therapist",
+        type: "General Practitioner",
         image: images.doctor9,
         distance: "1.4 km",
         consultationFee: "$240.00",
@@ -390,12 +390,12 @@ export const recommendedDoctors = [
         numReviews: "1.2k",
         hospital: "Breath Easy Clinic",
         isAvailable: true,
-        categoryId: "5",
-        speciality: "Therapist",
+        categoryId: "4",
+        speciality: "General Practitioner",
         yearsExperience: 9,
         patients: 1200,
         workingTime: "Mon-Fri: 9am-6pm",
-        description: "Dr. Maria Gonzalez specializes in therapy with a focus on mental wellness."
+        description: "Dr. Maria Gonzalez specializes in general practice with a focus on respiratory health."
     },
 ];
 

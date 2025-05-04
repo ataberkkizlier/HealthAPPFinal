@@ -158,9 +158,21 @@ const Profile = ({ navigation }) => {
      */
     const handleLogout = async () => {
         try {
+            // Close any open sheets or modals before logout to prevent animation errors
+            if (refRBSheet.current && refRBSheet.current.close) {
+                refRBSheet.current.close();
+            }
+            
+            // Clear any pending state updates or animations
+            setShowBmiInfo(false);
+            setModalVisible(false);
+            setUploadingImage(false);
+            
+            // Small delay to ensure UI elements are properly dismissed
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
             const { success, error } = await logout()
             if (success) {
-                refRBSheet.current.close()
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Welcome' }],
@@ -176,6 +188,33 @@ const Profile = ({ navigation }) => {
             Alert.alert('Logout Error', 'An error occurred while logging out')
         }
     }
+
+    // Add cleanup for navigation events
+    useEffect(() => {
+        // This effect runs when the component mounts
+        const unsubscribe = navigation.addListener('beforeRemove', () => {
+            // Clean up any animations or state updates before navigating away
+            setShowBmiInfo(false);
+            setModalVisible(false);
+            
+            // Close any open bottom sheets
+            if (refRBSheet.current && refRBSheet.current.close) {
+                refRBSheet.current.close();
+            }
+            if (genderSheet.current && genderSheet.current.close) {
+                genderSheet.current.close();
+            }
+            if (activitySheet.current && activitySheet.current.close) {
+                activitySheet.current.close();
+            }
+            if (weightGoalSheet.current && weightGoalSheet.current.close) {
+                weightGoalSheet.current.close();
+            }
+        });
+
+        // Clean up the listener when the component unmounts
+        return unsubscribe;
+    }, [navigation]);
 
     const handleSaveProfile = async () => {
         if (!user) {

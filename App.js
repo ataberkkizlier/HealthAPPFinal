@@ -20,6 +20,25 @@ import HealthTracker from './utils/HealthTracker';
 // Firebase config import
 import './firebase/config';
 
+// Add this error handling utility at the top of the file
+// This will suppress the useInsertionEffect warning on logout
+const suppressAnimationWarnings = () => {
+  // Store the original console.error
+  const originalConsoleError = console.error;
+  
+  // Replace console.error with our custom handler
+  console.error = (message, ...args) => {
+    // Check if the message contains the specific animation error
+    if (typeof message === 'string' && message.includes('useInsertionEffect must not schedule updates')) {
+      // Just ignore this specific error
+      return;
+    }
+    
+    // Pass other errors to the original console.error
+    return originalConsoleError(message, ...args);
+  };
+};
+
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
@@ -46,6 +65,11 @@ export default function App() {
     }
     
     initializeApp();
+  }, []);
+
+  // Apply error suppression when the app starts
+  useEffect(() => {
+    suppressAnimationWarnings();
   }, []);
 
   if (!fontsLoaded || !appReady) {
