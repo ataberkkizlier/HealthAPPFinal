@@ -38,8 +38,8 @@ export const healthDataOperations = {
                 lastUpdated: Date.now()
             };
             
-            // Use set (not update) to replace all data
-            await set(healthRef, cleanData);
+            // Use update (not set) to only update the provided fields
+            await update(healthRef, cleanData);
             
             // Verify the data was saved correctly
             const verifySnapshot = await get(healthRef);
