@@ -27,6 +27,7 @@ import RBSheet from 'react-native-raw-bottom-sheet'
 import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
 import { logout, updateUserProfile } from '../firebase/auth'
+import { healthDataOperations } from '../firebase/healthData'
 import { calculateBMI, getBMICategory, getBMIStatusInfo, getNutritionPlan } from '../utils/BMICalculator'
 import { useNutrition } from '../context/NutritionContext'
 
@@ -231,15 +232,14 @@ const Profile = ({ navigation }) => {
         setLoading(true)
         try {
             const healthData = {
+                age: age ? parseInt(age) : null,
                 weight: weight ? parseFloat(weight) : null,
                 height: height ? parseFloat(height) : null,
-                age: age ? parseInt(age) : null,
-                gender,
                 activityLevel,
                 weightGoal,
             }
-            
-            const result = await saveHealthData(healthData)
+            // Use healthDataOperations.updateHealthData to only update these fields
+            const result = await healthDataOperations.updateHealthData(user.uid, healthData)
             
             if (result.success) {
                 Alert.alert('Profile saved successfully!')
