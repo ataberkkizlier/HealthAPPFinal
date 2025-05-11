@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
 
 const SleepContext = createContext();
 
@@ -11,6 +12,7 @@ export const SleepProvider = ({ children }) => {
   const [sleepQualityPercentage, setSleepQualityPercentage] = useState(0);
   const [sleepHistory, setSleepHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user, saveHealthData } = useAuth();
 
   // Load sleep data from storage on mount
   useEffect(() => {
@@ -89,6 +91,11 @@ export const SleepProvider = ({ children }) => {
 
         return [...filteredHistory, newEntry].slice(-7);
       });
+
+      // Save to Firebase healthData if user is logged in
+      if (user && saveHealthData) {
+        saveHealthData({ sleepHours: parsedHours });
+      }
     }
   };
 
@@ -110,12 +117,14 @@ export const SleepProvider = ({ children }) => {
     try {
       setSleepHours(0);
       setSleepQualityPercentage(0);
-      
       // Don't reset history, just update AsyncStorage with current state
       await AsyncStorage.setItem('sleepHours', '0');
       await AsyncStorage.setItem('sleepQualityPercentage', '0');
-      
       console.log('Sleep data reset to 0');
+      // Save to Firebase healthData if user is logged in
+      if (user && saveHealthData) {
+        saveHealthData({ sleepHours: 0 });
+      }
     } catch (error) {
       console.error('Error resetting sleep data:', error);
     }

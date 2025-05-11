@@ -1,12 +1,14 @@
 // context/StepsContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
 
 const StepsContext = createContext();
 
 export const StepsProvider = ({ children }) => {
     const [steps, setSteps] = useState(0);
     const dailyGoal = 10000;
+    const { user, saveHealthData } = useAuth();
 
     useEffect(() => {
         const loadSteps = async () => {
@@ -41,11 +43,19 @@ export const StepsProvider = ({ children }) => {
         const cappedAmount = Math.min(newAmount, 50000);
         setSteps(cappedAmount);
         console.log('Updated steps:', cappedAmount);
+        // Save to Firebase healthData if user is logged in
+        if (user && saveHealthData) {
+            saveHealthData({ dailySteps: cappedAmount });
+        }
     };
 
     const resetSteps = () => {
         setSteps(0);
         console.log('Steps reset to 0');
+        // Save to Firebase healthData if user is logged in
+        if (user && saveHealthData) {
+            saveHealthData({ dailySteps: 0 });
+        }
     };
 
     return (
