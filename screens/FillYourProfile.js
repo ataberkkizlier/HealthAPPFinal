@@ -55,7 +55,6 @@ const FillYourProfile = ({ navigation, route }) => {
     const [areas, setAreas] = useState([]);
     const [selectedArea, setSelectedArea] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
-    const [openStartDatePicker, setOpenStartDatePicker] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { colors, dark } = useTheme();
 
@@ -63,8 +62,6 @@ const FillYourProfile = ({ navigation, route }) => {
     // Set minimum date to 1900 for birthdate selection
     const minDate = getFormatedDate(new Date(1900, 0, 1), 'YYYY/MM/DD'); // January 1, 1900
     const maxDate = getFormatedDate(today, 'YYYY/MM/DD'); // Today's date
-
-    const [startedDate, setStartedDate] = useState(''); // Remove default date
 
     // Pre-fill email if available
     useEffect(() => {
@@ -77,10 +74,6 @@ const FillYourProfile = ({ navigation, route }) => {
             });
         }
     }, [user]);
-
-    const handleOnPressStartDate = () => {
-        setOpenStartDatePicker(!openStartDatePicker);
-    };
 
     const inputChangedHandler = useCallback(
         (inputId, inputValue) => {
@@ -102,26 +95,17 @@ const FillYourProfile = ({ navigation, route }) => {
             Alert.alert('Eksik Bilgi', 'Lütfen tam adınızı girin');
             return;
         }
-
-        if (!startedDate) {
-            Alert.alert('Eksik Bilgi', 'Lütfen doğum tarihinizi seçin');
-            return;
-        }
-
         setIsLoading(true);
         try {
             const { success, error: updateError } = await updateUserProfile(
                 formState.inputValues.fullName,
-                image ? image.uri : null,
-                startedDate
+                image ? image.uri : null
             );
-
             if (updateError) {
                 setError(updateError);
                 setIsLoading(false);
                 return;
             }
-
             if (success) {
                 setIsLoading(false);
                 navigation.navigate('CreateNewPIN');
@@ -291,28 +275,6 @@ const FillYourProfile = ({ navigation, route }) => {
                             value={formState.inputValues.email}
                             editable={!user}
                         />
-                        <View style={{ width: SIZES.width - 32 }}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.inputBtn,
-                                    {
-                                        backgroundColor: dark ? COLORS.dark2 : COLORS.greyscale500,
-                                        borderColor: dark ? COLORS.dark2 : COLORS.greyscale500,
-                                    },
-                                ]}
-                                onPress={handleOnPressStartDate}
-                            >
-                                <Text
-                                    style={{
-                                        ...FONTS.body4,
-                                        color: COLORS.grayscale400,
-                                    }}
-                                >
-                                    {startedDate || 'Select Birth Date'}
-                                </Text>
-                                <Feather name="calendar" size={24} color={COLORS.grayscale400} />
-                            </TouchableOpacity>
-                        </View>
                         <View
                             style={[
                                 styles.inputContainer,
@@ -361,17 +323,6 @@ const FillYourProfile = ({ navigation, route }) => {
                         </View>
                     </View>
                 </ScrollView>
-                <DatePickerModal
-                    open={openStartDatePicker}
-                    startDate={minDate} // Allow dates from 1900
-                    maxDate={maxDate} // Restrict to today
-                    selectedDate={startedDate}
-                    onChangeStartDate={(date) => {
-                        setStartedDate(date);
-                        setOpenStartDatePicker(false);
-                    }}
-                    onClose={() => setOpenStartDatePicker(false)}
-                />
                 <RenderAreasCodesModal />
                 <View style={styles.buttonContainer}>
                     <Button

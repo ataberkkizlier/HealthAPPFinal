@@ -139,85 +139,6 @@ const Signup = ({ navigation }) => {
         // Implement Firebase Google Authentication
     }
 
-    // Test Firebase connection
-    const testFirebaseConnection = async () => {
-        try {
-            console.log("Testing Firebase connection...");
-            const result = await testFirebase();
-            console.log("Firebase test result:", result);
-
-            Alert.alert(
-                result.success ? "Firebase Test Success" : "Firebase Test Failed",
-                result.message
-            );
-        } catch (error) {
-            console.error("Firebase test error:", error);
-            Alert.alert(
-                "Firebase Test Error",
-                "Error testing Firebase: " + error.message
-            );
-        }
-    }
-    
-    // Test Firebase Database
-    const testDatabaseConnection = async () => {
-        try {
-            console.log("Testing Firebase Database connection...");
-            const result = await testDatabase();
-            console.log("Database test result:", result);
-
-            Alert.alert(
-                result.success ? "Database Test Success" : "Database Test Failed",
-                result.message
-            );
-        } catch (error) {
-            console.error("Database test error:", error);
-            Alert.alert(
-                "Database Test Error",
-                "Error testing database: " + error.message
-            );
-        }
-    }
-
-    // Test Firebase Database with simple test
-    const runSimpleDbTest = async () => {
-        try {
-            console.log("Running simple database test...");
-            const result = await runSimpleDatabaseTest();
-            console.log("Simple database test result:", result);
-
-            Alert.alert(
-                result.success ? "Database Test Success" : "Database Test Failed",
-                result.message
-            );
-        } catch (error) {
-            console.error("Simple database test error:", error);
-            Alert.alert(
-                "Database Test Error",
-                "Error in simple database test: " + error.message
-            );
-        }
-    }
-
-    // Show database rules help
-    const showDatabaseRulesHelp = () => {
-        const helpInfo = getDatabaseRulesHelp();
-        Alert.alert(
-            "Database Rules Help",
-            helpInfo.helpText + "\n\nDo you want to open Firebase Console?",
-            [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
-                {
-                    text: "Open Console",
-                    onPress: () => Linking.openURL(helpInfo.consoleUrl)
-                }
-            ]
-        );
-    }
-
     return (
         <SafeAreaView
             style={[styles.area, { backgroundColor: colors.background }]}
@@ -317,44 +238,6 @@ const Signup = ({ navigation }) => {
                             />
                         )}
                     </Button>
-                    
-                    {/* For testing purposes */}
-                    <View style={{marginTop: 10, flexDirection: 'column'}}>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10}}>
-                            <Button 
-                                title="Test Firebase Auth" 
-                                filled 
-                                onPress={testFirebaseConnection}
-                                style={[styles.button, {flex: 1, marginRight: 5}]}
-                            />
-                            <Button 
-                                title="Test Database" 
-                                filled 
-                                onPress={testDatabaseConnection}
-                                style={[styles.button, {flex: 1, marginLeft: 5}]}
-                            />
-                        </View>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10}}>
-                            <Button 
-                                title="Simple Database Test" 
-                                filled 
-                                onPress={runSimpleDbTest}
-                                style={[styles.button, {flex: 1, marginRight: 5}]}
-                            />
-                            <Button 
-                                title="Database Rules Help" 
-                                filled 
-                                onPress={showDatabaseRulesHelp}
-                                style={[styles.button, {flex: 1, marginLeft: 5}]}
-                            />
-                        </View>
-                    </View>
-
-                    <Button
-                        title=" Privacy Policy"
-                        onPress={testFirebaseConnection}
-                        style={[styles.button, { marginTop: 10, backgroundColor: '#ff9900' }]}
-                    />
                     <View>
                         <OrSeparator text="or continue with" />
                         <View style={styles.socialBtnContainer}>
