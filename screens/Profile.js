@@ -222,38 +222,38 @@ const Profile = ({ navigation }) => {
             Alert.alert('Please login to save your profile')
             return
         }
-        
-        // Validate inputs
-        if (!weight || !height || !age) {
-            Alert.alert('Required Fields', 'Please fill in your weight, height, and age to calculate your BMI and nutrition plan.')
+        if (!weight || !height || !age || !gender || !activityLevel || !weightGoal) {
+            Alert.alert('Required Fields', 'Please fill in your weight, height, age, gender, activity level, and weight goal to calculate your BMI and nutrition plan.')
             return
         }
-        
         setLoading(true)
         try {
             const healthData = {
                 age: age ? parseInt(age) : null,
                 weight: weight ? parseFloat(weight) : null,
                 height: height ? parseFloat(height) : null,
-                activityLevel,
-                weightGoal,
-            }
-            // Use healthDataOperations.updateHealthData to only update these fields
-            const result = await healthDataOperations.updateHealthData(user.uid, healthData)
-            
+                gender: gender || null,
+                activityLevel: activityLevel || null,
+                weightGoal: weightGoal || null,
+            };
+            const result = await healthDataOperations.updateHealthData(user.uid, healthData);
             if (result.success) {
-                Alert.alert('Profile saved successfully!')
-                
-                // Show BMI information
-                setShowBmiInfo(true)
+                Alert.alert('Profile saved successfully!');
+                setShowBmiInfo(true);
+                const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000));
+                if (typeof saveHealthData === 'function') {
+                    console.log('Calling saveHealthData...');
+                    await Promise.race([saveHealthData(healthData), timeoutPromise]);
+                    console.log('saveHealthData finished or timed out');
+                }
             } else {
-                Alert.alert('Failed to save profile: ' + (result.error || 'Unknown error'))
+                Alert.alert('Failed to save profile: ' + (result.error || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Error saving profile:', error)
-            Alert.alert('An error occurred while saving your profile')
+            console.error('Error saving profile:', error);
+            Alert.alert('An error occurred while saving your profile');
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 

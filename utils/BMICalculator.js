@@ -131,68 +131,87 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory, weightGoal = 
   let carbPercentage = 0.5; // 50% of calories from carbs
   let fatPercentage = 0.3; // 30% of calories from fat
   
-  // First, adjust based on BMI category
-  switch (bmiCategory) {
-    case BMI_CATEGORIES.UNDERWEIGHT:
-      // Higher calories, more protein to build muscle
-      proteinPercentage = 0.25; // 25%
-      carbPercentage = 0.5; // 50%
-      fatPercentage = 0.25; // 25%
-      break;
-      
-    case BMI_CATEGORIES.NORMAL:
-      // Balanced distribution
-      proteinPercentage = 0.2; // 20%
-      carbPercentage = 0.5; // 50%
-      fatPercentage = 0.3; // 30%
-      break;
-      
-    case BMI_CATEGORIES.OVERWEIGHT:
-      // More protein, fewer carbs
-      proteinPercentage = 0.25; // 25%
-      carbPercentage = 0.45; // 45%
-      fatPercentage = 0.3; // 30%
-      break;
-      
-    case BMI_CATEGORIES.OBESE:
-    case BMI_CATEGORIES.SEVERELY_OBESE:
-      // Higher protein, lower carbs to preserve muscle while losing fat
-      proteinPercentage = 0.3; // 30%
-      carbPercentage = 0.4; // 40%
-      fatPercentage = 0.3; // 30%
-      break;
-      
-    default:
-      // Use default values
-      break;
-  }
-  
-  // Then, adjust based on weight goal
-  switch (weightGoal) {
-    case 'Lose':
-      // For weight loss: increase protein to preserve muscle, reduce carbs and fat
-      // Higher protein helps with satiety and preserving muscle mass
-      proteinPercentage += 0.05; // +5%
-      carbPercentage -= 0.05; // -5%
-      
-      // Adjust total calories (caloric deficit for weight loss)
-      dailyCalories = Math.round(dailyCalories * 0.8); // 20% caloric deficit
-      break;
-      
-    case 'Gain':
-      // For weight gain: increase overall calories, emphasize carbs for energy
-      // Adequate protein for muscle building
+  // First, adjust based on BMI category and weight goal
+  if (weightGoal === 'Lose') {
+    switch (bmiCategory) {
+      case BMI_CATEGORIES.OVERWEIGHT:
+        // For overweight: Higher protein, moderate carbs, moderate fat
+        // Focus on preserving muscle while losing fat
+        proteinPercentage = 0.35; // 35% protein for muscle preservation
+        carbPercentage = 0.35; // 35% carbs for energy
+        fatPercentage = 0.30; // 30% fat for hormone regulation
+        // Moderate caloric deficit
+        dailyCalories = Math.round(dailyCalories * 0.85); // 15% caloric deficit
+        break;
+        
+      case BMI_CATEGORIES.OBESE:
+        // For obese: Very high protein, lower carbs, moderate fat
+        // Focus on satiety and muscle preservation
+        proteinPercentage = 0.40; // 40% protein for satiety and muscle preservation
+        carbPercentage = 0.30; // 30% carbs
+        fatPercentage = 0.30; // 30% fat
+        // Larger caloric deficit
+        dailyCalories = Math.round(dailyCalories * 0.75); // 25% caloric deficit
+        break;
+        
+      case BMI_CATEGORIES.SEVERELY_OBESE:
+        // For severely obese: Highest protein, lowest carbs, moderate fat
+        // Focus on metabolic health and muscle preservation
+        proteinPercentage = 0.45; // 45% protein
+        carbPercentage = 0.25; // 25% carbs
+        fatPercentage = 0.30; // 30% fat
+        // Largest caloric deficit
+        dailyCalories = Math.round(dailyCalories * 0.70); // 30% caloric deficit
+        break;
+        
+      default:
+        // For normal weight trying to lose: Balanced approach
+        proteinPercentage = 0.30; // 30% protein
+        carbPercentage = 0.40; // 40% carbs
+        fatPercentage = 0.30; // 30% fat
+        // Smaller caloric deficit
+        dailyCalories = Math.round(dailyCalories * 0.90); // 10% caloric deficit
+        break;
+    }
+  } else {
+    // For maintain or gain weight, use the original BMI-based adjustments
+    switch (bmiCategory) {
+      case BMI_CATEGORIES.UNDERWEIGHT:
+        // Higher calories, more protein to build muscle
+        proteinPercentage = 0.25; // 25%
+        carbPercentage = 0.5; // 50%
+        fatPercentage = 0.25; // 25%
+        break;
+        
+      case BMI_CATEGORIES.NORMAL:
+        // Balanced distribution
+        proteinPercentage = 0.2; // 20%
+        carbPercentage = 0.5; // 50%
+        fatPercentage = 0.3; // 30%
+        break;
+        
+      case BMI_CATEGORIES.OVERWEIGHT:
+        // More protein, fewer carbs
+        proteinPercentage = 0.25; // 25%
+        carbPercentage = 0.45; // 45%
+        fatPercentage = 0.3; // 30%
+        break;
+        
+      case BMI_CATEGORIES.OBESE:
+      case BMI_CATEGORIES.SEVERELY_OBESE:
+        // Higher protein, lower carbs to preserve muscle while losing fat
+        proteinPercentage = 0.3; // 30%
+        carbPercentage = 0.4; // 40%
+        fatPercentage = 0.3; // 30%
+        break;
+    }
+    
+    // Adjust for weight gain if needed
+    if (weightGoal === 'Gain') {
       carbPercentage += 0.05; // +5%
       fatPercentage -= 0.05; // -5%
-      
-      // Adjust total calories (caloric surplus for weight gain)
       dailyCalories = Math.round(dailyCalories * 1.15); // 15% caloric surplus
-      break;
-      
-    case 'Maintain':
-    default:
-      // Maintain current macronutrient distribution
-      break;
+    }
   }
   
   // Calculate grams of each macronutrient
@@ -211,7 +230,12 @@ export const calculateNutrientGoals = (dailyCalories, bmiCategory, weightGoal = 
     protein: proteinGrams,
     carbs: carbGrams,
     fat: fatGrams,
-    adjustedCalories: dailyCalories
+    adjustedCalories: dailyCalories,
+    macronutrientPercentages: {
+      protein: Math.round(proteinPercentage * 100),
+      carbs: Math.round(carbPercentage * 100),
+      fat: Math.round(fatPercentage * 100)
+    }
   };
 };
 

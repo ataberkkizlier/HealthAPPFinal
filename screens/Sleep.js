@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, StatusBar, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient'; // For gradient background
 import moment from 'moment'; // For date manipulation
@@ -14,7 +14,8 @@ const Sleep = () => {
     sleepQualityPercentage, 
     sleepHistory, 
     updateSleepHours, 
-    recommendedSleepHours 
+    recommendedSleepHours,
+    resetSleep
   } = useSleep();
   
   // Local state for input field
@@ -57,6 +58,24 @@ const Sleep = () => {
     return '#F44336'; // Red
   };
 
+  // Add reset handler
+  const handleResetSleep = () => {
+    // Show confirmation alert
+    alertReset();
+  };
+
+  const alertReset = () => {
+    // Use Alert from react-native
+    Alert.alert(
+      'Reset Sleep Data',
+      'This will reset your sleep hours and quality to 0. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: () => resetSleep() }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -75,7 +94,12 @@ const Sleep = () => {
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Sleep Tracker</Text>
-            <View style={{ width: 24 }} />
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleResetSleep}
+            >
+              <Ionicons name="refresh" size={22} color="white" />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -369,6 +393,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 5,
     lineHeight: 20,
+  },
+  resetButton: {
+    padding: 8,
   },
 });
 

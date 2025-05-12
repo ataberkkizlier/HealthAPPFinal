@@ -15,11 +15,11 @@ export const NutritionProvider = ({ children }) => {
     const [carbsConsumed, setCarbsConsumed] = useState(0);
     const [fatConsumed, setFatConsumed] = useState(0);
     
-    // Default targets (will be updated based on user profile)
-    const [calorieTarget, setCalorieTarget] = useState(2500);
-    const [proteinTarget, setProteinTarget] = useState(125); // in grams
-    const [carbsTarget, setCarbsTarget] = useState(312); // in grams
-    const [fatTarget, setFatTarget] = useState(83); // in grams
+    // Remove hardcoded default targets
+    const [calorieTarget, setCalorieTarget] = useState(0);
+    const [proteinTarget, setProteinTarget] = useState(0);
+    const [carbsTarget, setCarbsTarget] = useState(0);
+    const [fatTarget, setFatTarget] = useState(0);
     
     const [nutritionPlan, setNutritionPlan] = useState(null);
     
@@ -46,133 +46,116 @@ export const NutritionProvider = ({ children }) => {
         };
     };
 
-    // Update nutrition plan based on user profile
+    // Update nutrition plan and targets based on user profile
     useEffect(() => {
-        if (!userData) return;
-        
-        const { weight, height, age, gender, activityLevel, weightGoal } = userData;
-        
-        // Check if we have all required data to calculate a nutrition plan
-        if (weight && height && age && gender) {
-            const activityLevelValue = activityLevel || 'moderate'; // Default to moderate if not set
-            const weightGoalValue = weightGoal || 'Maintain'; // Default to maintain if not set
-            
-            // Calculate nutrition plan
-            const plan = getNutritionPlan(
-                parseFloat(weight),
-                parseFloat(height),
-                parseInt(age),
-                gender.toLowerCase(),
-                activityLevelValue,
-                weightGoalValue
-            );
-            
-            setNutritionPlan(plan);
-            
-            // Update targets
-            setCalorieTarget(plan.adjustedCalories || plan.dailyCalories);
-            setProteinTarget(plan.nutrientGoals.protein);
-            setCarbsTarget(plan.nutrientGoals.carbs);
-            setFatTarget(plan.nutrientGoals.fat);
-            
-            console.log('Updated nutrition plan based on user profile:', plan);
-        }
-    }, [userData]);
-
-    // Load saved nutrition data on app start or when user/userData changes
-    useEffect(() => {
-        console.log('NutritionContext: User or userData changed');
-        
-        // If we have user-specific data from Firebase, use that
-        if (userData) {
-            // Load overall nutrition percentage
-            if (userData.nutritionPercentage !== undefined) {
-                console.log('Found user-specific nutrition percentage in userData:', userData.nutritionPercentage);
-                setNutritionPercentage(userData.nutritionPercentage);
-            }
-            
-            // Load calories consumed
-            if (userData.caloriesConsumed !== undefined) {
-                console.log('Found user-specific calories consumed in userData:', userData.caloriesConsumed);
-                setCaloriesConsumed(userData.caloriesConsumed);
-            }
-            
-            // Load macronutrients consumed
-            if (userData.proteinConsumed !== undefined) {
-                setProteinConsumed(userData.proteinConsumed);
-            }
-            
-            if (userData.carbsConsumed !== undefined) {
-                setCarbsConsumed(userData.carbsConsumed);
-            }
-            
-            if (userData.fatConsumed !== undefined) {
-                setFatConsumed(userData.fatConsumed);
-            }
-            
+        if (!userData) {
+            console.warn('No userData available');
             return;
         }
-
-        // Otherwise load from AsyncStorage with user-specific key
-        const loadNutrition = async () => {
-            try {
-                // Use user UID as part of the storage key if available
-                const storageKeyPrefix = user ? `@nutrition_${user.uid}` : '@nutrition_guest';
-                console.log('Attempting to load from AsyncStorage with key prefix:', storageKeyPrefix);
-                
-                // Load percentage
-                const savedPercentage = await AsyncStorage.getItem(`${storageKeyPrefix}_percentage`);
-                if (savedPercentage) {
-                    const parsedPercentage = parseInt(savedPercentage);
-                    console.log('Loaded nutrition percentage from AsyncStorage:', parsedPercentage);
-                    setNutritionPercentage(parsedPercentage);
-                } else {
-                    console.log('No saved nutrition percentage found in AsyncStorage');
-                    // Reset to 0 when switching users and no data exists
-                    setNutritionPercentage(0);
+        const { weight, height, age, gender, activityLevel, weightGoal } = userData;
+        console.log('userData in NutritionContext:', userData);
+        // Parse all fields to correct types
+        const parsedWeight = weight ? parseFloat(weight) : null;
+        const parsedHeight = height ? parseFloat(height) : null;
+        const parsedAge = age ? parseInt(age) : null;
+        const parsedGender = gender ? gender.toLowerCase() : "male"; // Default to 'male' if missing
+        const parsedActivityLevel = activityLevel || 'moderate';
+        const parsedWeightGoal = weightGoal || 'Maintain';
+        if (parsedWeight && parsedHeight && parsedAge && parsedGender) {
+            console.log('Calling getNutritionPlan with:', { parsedWeight, parsedHeight, parsedAge, parsedGender, parsedActivityLevel, parsedWeightGoal });
+            const plan = getNutritionPlan(
+                parsedWeight,
+                parsedHeight,
+                parsedAge,
+                parsedGender,
+                parsedActivityLevel,
+                parsedWeightGoal
+            );
+            console.log('Generated nutrition plan:', plan);
+            if (
+                plan &&
+                plan.nutrientGoals &&
+                (plan.nutrientGoals.protein > 0 ||
+                 plan.nutrientGoals.carbs > 0 ||
+                 plan.nutrientGoals.fat > 0)
+            ) {
+                setNutritionPlan(plan);
+                const { nutrientGoals } = plan;
+                setCalorieTarget(nutrientGoals.adjustedCalories || plan.dailyCalories);
+                setProteinTarget(nutrientGoals.protein);
+                setCarbsTarget(nutrientGoals.carbs);
+                setFatTarget(nutrientGoals.fat);
+                if (user) {
+                    healthDataOperations.updateHealthData(user.uid, {
+                        calorieTarget: nutrientGoals.adjustedCalories || plan.dailyCalories,
+                        proteinTarget: nutrientGoals.protein,
+                        carbsTarget: nutrientGoals.carbs,
+                        fatTarget: nutrientGoals.fat,
+                        lastUpdated: Date.now()
+                    }).catch(error => {
+                        console.error('Error updating nutrition targets in database:', error);
+                    });
                 }
+                console.log('Updated nutrition targets:', {
+                    calories: nutrientGoals.adjustedCalories || plan.dailyCalories,
+                    protein: nutrientGoals.protein,
+                    carbs: nutrientGoals.carbs,
+                    fat: nutrientGoals.fat
+                });
+            } else {
+                console.warn('Nutrition plan calculation returned all zeros. Not updating targets. Plan:', plan, 'Inputs:', { parsedWeight, parsedHeight, parsedAge, parsedGender, parsedActivityLevel, parsedWeightGoal });
+            }
+        } else {
+            console.warn('Missing required userData fields for nutrition calculation:', { parsedWeight, parsedHeight, parsedAge, parsedGender });
+        }
+    }, [userData, user]);
+
+    // Load saved nutrition data including targets
+    useEffect(() => {
+        const loadNutrition = async () => {
+            if (!user) return;
+            
+            try {
+                const storageKeyPrefix = `nutrition_${user.uid}_${new Date().toISOString().split('T')[0]}`;
                 
-                // Load calories consumed
+                // Load consumed values
                 const savedCalories = await AsyncStorage.getItem(`${storageKeyPrefix}_calories`);
                 if (savedCalories) {
-                    const parsedCalories = parseFloat(savedCalories);
-                    console.log('Loaded calories consumed from AsyncStorage:', parsedCalories);
-                    setCaloriesConsumed(parsedCalories);
-                } else {
-                    console.log('No saved calories consumed found in AsyncStorage');
-                    // Reset to 0 when switching users and no data exists
-                    setCaloriesConsumed(0);
+                    setCaloriesConsumed(parseFloat(savedCalories));
                 }
                 
-                // Load macronutrients
                 const savedProtein = await AsyncStorage.getItem(`${storageKeyPrefix}_protein`);
                 if (savedProtein) {
                     setProteinConsumed(parseFloat(savedProtein));
-                } else {
-                    setProteinConsumed(0);
                 }
                 
                 const savedCarbs = await AsyncStorage.getItem(`${storageKeyPrefix}_carbs`);
                 if (savedCarbs) {
                     setCarbsConsumed(parseFloat(savedCarbs));
-                } else {
-                    setCarbsConsumed(0);
                 }
                 
                 const savedFat = await AsyncStorage.getItem(`${storageKeyPrefix}_fat`);
                 if (savedFat) {
                     setFatConsumed(parseFloat(savedFat));
-                } else {
-                    setFatConsumed(0);
+                }
+                
+                // Load targets from database if available
+                try {
+                    const healthData = await healthDataOperations.getHealthData(user.uid);
+                    if (healthData) {
+                        if (healthData.calorieTarget) setCalorieTarget(healthData.calorieTarget);
+                        if (healthData.proteinTarget) setProteinTarget(healthData.proteinTarget);
+                        if (healthData.carbsTarget) setCarbsTarget(healthData.carbsTarget);
+                        if (healthData.fatTarget) setFatTarget(healthData.fatTarget);
+                    }
+                } catch (error) {
+                    console.error('Error loading nutrition targets from database:', error);
                 }
                 
                 // Also try to get today's totals from the ConsumedFoodService
                 try {
-                    const userId = user ? user.uid : null;
-                    const todaysTotals = await consumedFoodService.getTodaysTotals(userId);
+                    const todaysTotals = await consumedFoodService.getTodaysTotals(user.uid);
                     if (todaysTotals && todaysTotals.calories > 0) {
-                        // If we have data in ConsumedFoodService, prefer that
-                        console.log('Found nutrition data in ConsumedFoodService:', todaysTotals);
                         updateNutrientIntake(
                             todaysTotals.calories,
                             todaysTotals.protein || 0,
@@ -187,8 +170,9 @@ export const NutritionProvider = ({ children }) => {
                 console.error('Error loading nutrition data:', e);
             }
         };
+        
         loadNutrition();
-    }, [user, userData]);
+    }, [user]);
 
     // Save nutrition data whenever it changes
     useEffect(() => {
