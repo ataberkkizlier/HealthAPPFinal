@@ -27,6 +27,7 @@ import testFirebase from '../firebase/firebaseTest'
 import testDatabase from '../firebase/databaseTest'
 import runSimpleDatabaseTest from '../firebase/simpleDatabaseTest'
 import getDatabaseRulesHelp from '../firebase/databaseRules'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const isTestMode = false
 
@@ -106,6 +107,12 @@ const Signup = ({ navigation }) => {
 
             // Registration successful
             console.log('Registration successful:', user.uid)
+
+            // Clear sleep data for new user
+            await AsyncStorage.removeItem('sleepHistory');
+            await AsyncStorage.removeItem('sleepHours');
+            await AsyncStorage.removeItem('sleepQualityPercentage');
+
             setIsLoading(false)
             navigation.navigate('FillYourProfile', { userId: user.uid })
         } catch (err) {

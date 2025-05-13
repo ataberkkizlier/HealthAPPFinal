@@ -307,7 +307,7 @@ const Profile = ({ navigation }) => {
      */
     const renderProfile = () => {
         // Use profileImage from context or default user image
-        const defaultImage = profileImage ? { uri: profileImage } : images.user1
+        const defaultImage = profileImage ? { uri: profileImage } : icons.userDefault
 
         const pickImage = async () => {
             try {

@@ -117,9 +117,10 @@ export const SleepProvider = ({ children }) => {
     try {
       setSleepHours(0);
       setSleepQualityPercentage(0);
-      // Don't reset history, just update AsyncStorage with current state
+      setSleepHistory([]); // Clear weekly sleep history
       await AsyncStorage.setItem('sleepHours', '0');
       await AsyncStorage.setItem('sleepQualityPercentage', '0');
+      await AsyncStorage.setItem('sleepHistory', '[]'); // Clear from storage
       console.log('Sleep data reset to 0');
       // Save to Firebase healthData if user is logged in
       if (user && saveHealthData) {

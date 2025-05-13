@@ -184,7 +184,7 @@ const EditProfile = ({ navigation }) => {
           <View style={{ alignItems: "center", marginVertical: 12 }}>
             <View style={styles.avatarContainer}>
               <Image
-                source={image === null ? images.user1 : image}
+                source={image === null ? icons.userDefault : image}
                 resizeMode="cover"
                 style={styles.avatar} />
               <TouchableOpacity

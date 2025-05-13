@@ -57,7 +57,7 @@ export const sendPasswordReset = async (email) => {
         return { success: false, error: error.message }
     }
 }
-
+    
 // Update user profile
 export const updateUserProfile = async (displayName, photoURL = null) => {
     try {
